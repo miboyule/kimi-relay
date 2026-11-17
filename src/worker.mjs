@@ -7,6 +7,7 @@ import { createGuardedOnboarding } from './policy.mjs';
 import { backupFiles, kimiBackupFiles } from './migration.mjs';
 import { RelayPanelController, RelayPanel } from './panel.mjs';
 import { allowLocalPageNavigation } from './browser.mjs';
+import { inspectWindowsApplication } from './windows-processes.mjs';
 
 const args = process.argv.slice(2);
 const option = name => args[args.indexOf(name) + 1];
@@ -36,8 +37,9 @@ async function startPanel() {
   // before calling run, then provide the already resolved factory.
   let factory;
   if (!noNative) {
-    const { createNativeConnection } = await loadCore('src/native-connection.mjs');
+    const { createNativeConnection, protectedConnectionEnvNames } = await loadCore('src/native-connection.mjs');
     const { NativeOnboarding } = await loadCore('src/native-onboarding.mjs');
+    const { NativeDesktopRuntime } = await loadCore('src/native-desktop-runtime.mjs');
     const { NativeSetupProbe } = await loadCore('src/native-status.mjs');
     const { nativeFlagFile } = await loadCore('src/paths.mjs');
     const { defaultKimiDirectory } = await loadCore('src/paths.mjs');
@@ -49,7 +51,13 @@ async function startPanel() {
       const onboarding = createGuardedOnboarding({ enabled: options.config.dns.enabled,
         check: () => probe.check(), prepare: input => base.ensure(input),
         reveal: async () => writePrivateJson(base.flagFile, base.setup.flagValue()) });
-      return createNativeConnection({ ...options, onboarding });
+      const desktop = new NativeDesktopRuntime({ ...options,
+        protectedEnvNames: protectedConnectionEnvNames(options.config), gatewayBusy: () => options.gateway.inflight.size });
+      if (process.platform === 'win32') {
+        desktop.runtime.inspectApplication = application => inspectWindowsApplication(application);
+        desktop.runtime.runningPids = application => inspectWindowsApplication(application).pids;
+      }
+      return createNativeConnection({ ...options, onboarding, desktop });
     };
   }
   panelTask = run(['panel', '--config', configFile, '--credentials', path.join(stateDir, 'credentials.json'),

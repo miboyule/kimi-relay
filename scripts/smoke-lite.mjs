@@ -84,7 +84,7 @@ try {
   await setup.getByRole('button', { name: '保存并打开控制面板' }).click();
   await setup.waitForURL(url => url.origin !== originalOrigin, { timeout: 45000 });
   const credentialsFile = path.join(state, 'credentials.json');
-  const credentials = await fs.readFile(credentialsFile);
+  let credentials = await fs.readFile(credentialsFile);
   const key = JSON.parse(credentials).gatewayToken;
   const result = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, { method: 'POST',
     headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
@@ -99,6 +99,22 @@ try {
   // enabled. Do not intercept that read while preparing the late-poll scenario.
   await manager.waitForFunction(() => !document.querySelector('[data-action="stop"]').disabled);
   assert.deepEqual(await fs.readFile(credentialsFile), credentials);
+  // A customer clicks Modify expecting the form itself, not a changed link.
+  await manager.locator('[data-action="setup"]').click();
+  await manager.locator('#name').waitFor({ state: 'visible' });
+  await manager.waitForFunction(() => document.querySelector('#models').value === 'deepseek-chat');
+  assert.equal(await manager.locator('#key').inputValue(), '');
+  const modifiedOrigin = new URL(manager.url()).origin;
+  await manager.getByRole('button', { name: '保存并打开控制面板' }).click();
+  await manager.waitForURL(url => url.origin !== modifiedOrigin, { timeout: 45000 });
+  const savedCredentials = await fs.readFile(credentialsFile);
+  const { updatedAt: previousUpdate, ...previousValues } = JSON.parse(credentials);
+  const { updatedAt: savedUpdate, ...savedValues } = JSON.parse(savedCredentials);
+  assert.deepEqual(savedValues, previousValues);
+  assert.ok(Date.parse(savedUpdate) >= Date.parse(previousUpdate));
+  credentials = savedCredentials;
+  await manager.goto(entry.url);
+  await manager.locator('[data-action="stop"]').waitFor({ state: 'visible' });
   assert.deepEqual(errors, []);
   // Reproduce a late status response arriving after Stop. It must not replace
   // the final success message with a spurious connection error.

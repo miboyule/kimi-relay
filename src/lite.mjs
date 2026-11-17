@@ -125,7 +125,17 @@ async function main() {
     }
   }
   if (!ownedLock) throw Error('lite_instance_busy');
-  control = new LiteControl({ snapshot: () => snapshot, action });
+  control = new LiteControl({ snapshot: () => {
+    let kimi;
+    if (snapshot.mode === 'panel') {
+      try {
+        const status = JSON.parse(fs.readFileSync(path.join(directory, 'status.json'), 'utf8'));
+        if (status.pid === child?.pid) kimi = { imported: status.integration?.imported === true,
+          needsDNS: status.native?.preparation?.state === 'waiting-permission' };
+      } catch {}
+    }
+    return { ...snapshot, ...(kimi ? { kimi } : {}) };
+  }, action });
   await control.start();
   privateJson(record, { url: control.entryURL, pid: process.pid, instance });
   process.on('SIGTERM', () => { void stop(); });

@@ -11,6 +11,14 @@
 3. 默认浏览器打开本机管理页。点击“填写供应商”或“打开控制面板”，填写 API 地址、自己的 Key、真实模型 ID，然后在控制面板完成 Kimi 接入。
 4. 关闭网页，网关仍继续运行。再次双击启动文件可以重新打开管理页；点击“停止并退出”才会停止网关。没有托盘图标，也不自动开机运行。
 
+### 点了没有生效时
+
+- **修改供应商**：点击“修改接入”后会直接打开设置表单。修改 Base URL、模型 ID 后保存；API Key 留空会保留原值。设置保存后自动进入控制面板。旧版 beta.6 只改变绿色链接，点击后还需要再点“填写供应商”。
+- **网关运行不等于已选用**：先确认管理页显示“模型已导入 Kimi”。若提示单域名解析，在“修改接入 → 更多连接选项”明确勾选并保存，按系统提示授权，再到控制面板连接 Kimi。
+- **在 Kimi 选择模型**：进入 **Work → 新建任务 → 输入框下方的模型按钮 → 第三方网关**，选择你添加的真实模型，例如 `kimi-k3-1`。列表中的官方 `K3`、`K3.1 Pro` 仍使用官方服务。旧任务不会因为重启网关而自动切换。
+- **第一次连接卡在退出**：Windows 的关闭按钮可能仅将 Kimi 隐藏到托盘。先结束任务，再从 Kimi 托盘菜单完全退出，然后在 Relay 控制面板启动并连接 Kimi。工具不自动强制结束任务。
+- **确认实际调用**：发送“只回复：连接成功”，并在控制面板请求记录中确认模型 ID、成功状态和第三方供应商。导入成功仅证明模型目录接入，不证明某次任务或工具调用成功。
+
 若使用过上一版 Electron 桌面版，先从它的托盘退出，再启动 Lite。数据目录相同，已有供应商设置与备份无需重填。不要同时运行两个版本。已下载的大包内 `resources/runtime/` 也可以复制为 Lite 根目录的 `runtime/`，再解压代码包，即可复用原有 Node；复制后可删除不再使用的大包。
 
 ### 后续只替换程序文件
@@ -39,6 +47,8 @@ Lite removes the bundled Electron browser and uses your default browser. It reta
 Extract the full archive for your OS and architecture. On Windows, double-click `Start Kimi Relay.vbs` (or `.cmd` if VBS is disabled). On macOS, open `Kimi Relay Lite.app` **beside** `app/` and `runtime/`, or use `Start Kimi Relay.command`. Move the entire extracted folder, not just the small `.app` launcher. Use the browser manager to open setup/control panel and connect Kimi. Closing browser tabs leaves the gateway running. Launch again to reopen the manager; **Stop and exit** stops it. There is no tray or automatic startup.
 
 Exit the previous Electron edition before running Lite. They share the same default data folder, so provider credentials and backups carry over. To reuse an already downloaded desktop package, copy its `resources/runtime/` to the Lite folder as `runtime/`, then extract the code-only ZIP into that folder. No further runtime download is needed.
+
+**If clicking appears to do nothing:** Modify connection now navigates directly to the setup form. Edit the Base URL and model IDs; leave API Key empty to keep it. In beta.6, click the updated green setup link after Modify. A running gateway does not select a model in Kimi: use **Work → New task → model picker → Third-party gateway**, then choose an imported model. Official K3 entries still use the official service, and restarting the gateway does not switch existing tasks. Enable the optional single-domain resolver in setup if requested. If the first connection waits for Kimi to exit on Windows, finish tasks and fully quit Kimi from its tray menu; closing the window may only hide it. Then launch/connect from the Relay panel. The tool does not force-kill tasks. Verify a small reply and its successful provider request record; catalog import alone does not prove inference or tool execution.
 
 For later updates, stop the gateway, back up `app/`, launchers and `VERSION.json`, then extract the code-only ZIP over the existing Lite folder. Keep `runtime/` and all data. Roll back by stopping and restoring the saved application files. Code-only packages currently require Node 24; future runtime changes will be documented. They are **not Kimi application patches** and must not be extracted into an Electron package's `resources/` folder.
 
