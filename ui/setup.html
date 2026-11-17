@@ -39,7 +39,7 @@
       <label class="check"><input id="image" type="checkbox"><span>模型支持图片输入</span></label>
       <label class="check"><input id="reasoning" type="checkbox"><span>模型支持推理能力</span></label>
       <label for="port">本机网关端口</label><input id="port" type="number" min="1024" max="65535" value="3426" required>
-      <label class="check"><input id="dns" type="checkbox"><span>允许配置 Kimi 所需的单域名解析<br><small>部分安装需要此选项。Windows 添加一组带标记的 hosts 条目；macOS 添加单域名 resolver。执行时由系统请求管理员授权，可在应用菜单撤销。</small></span></label>
+      <label class="check"><input id="dns" type="checkbox"><span>允许配置 Kimi 所需的单域名解析<br><small>部分安装需要此选项。Windows 添加一组带标记的 hosts 条目；macOS 添加单域名 resolver。执行时由系统请求管理员授权，可在管理页（桌面版应用菜单）撤销。</small></span></label>
     </details>
     <button id="save" type="submit">保存并打开控制面板 →</button>
     <div id="status" role="status" aria-live="polite"></div>
@@ -57,7 +57,7 @@
   history.replaceState(null, '', location.pathname);
   let connectionId = 'relay';
   let previousModels = [];
-  const messages = { invalid_api_key:'请填写 API Key。', invalid_base_url:'请检查 API 地址。远程地址需要 HTTPS，且不能包含密钥或查询参数。', invalid_models:'请检查模型 ID 和上下文预算。', invalid_port:'端口需在 1024–65535 之间。', setup_config_conflict:'配置文件已存在且归属不符，已保留原文件。', setup_credentials_conflict:'凭据文件归属不符，已保留原文件。', unauthorized:'会话已失效，请从应用菜单重新打开首次设置。', setup_failed:'保存失败，请检查数据目录是否可写。' };
+  const messages = { invalid_api_key:'请填写 API Key。', invalid_base_url:'请检查 API 地址。远程地址需要 HTTPS，且不能包含密钥或查询参数。', invalid_models:'请检查模型 ID 和上下文预算。', invalid_port:'端口需在 1024–65535 之间。', setup_config_conflict:'配置文件已存在且归属不符，已保留原文件。', setup_credentials_conflict:'凭据文件归属不符，已保留原文件。', unauthorized:'会话已失效，请从管理页（桌面版应用菜单）重新打开首次设置。', setup_failed:'保存失败，请检查数据目录是否可写。' };
   const say = (text, error=false) => { $('status').textContent=text; $('status').dataset.error=String(error); };
   async function api(route, body) {
     const response = await fetch(route, { method:body ? 'POST':'GET', headers:{ authorization:'Bearer '+token, ...(body ? {'content-type':'application/json'}:{}) }, ...(body ? {body:JSON.stringify(body)}:{}) });
@@ -82,6 +82,17 @@
       await api('/api/save',payload);
       $('key').value='';
       say('已保存。正在启动网关，稍后自动打开控制面板…');
+      for (let attempt=0;attempt<60;attempt++) {
+        await new Promise(resolve=>setTimeout(resolve,500));
+        const data=await api('/api/state');
+        if (data.panel?.state==='ready' && data.panel.entryURL) {
+          const target=new URL(data.panel.entryURL);
+          if(target.protocol==='http:' && target.hostname==='127.0.0.1' && target.port && !target.username && !target.password) {
+            location.replace(target.href);return;
+          }
+        }
+      }
+      say('设置已保存。请返回管理页查看网关状态，再打开控制面板。');
     } catch(error) { say(error.message,true); }
     finally { $('save').disabled=false; }
   });
@@ -91,7 +102,7 @@
     const connection=state.connections[0];
     if (state.connections.length>1 || new Set(state.models.map(x=>x.protocol)).size>1) {
       $('save').disabled=true;
-      say('当前已有多连接或混合协议配置，请从应用菜单打开控制面板维护。首次设置页不会覆盖这类配置。');
+      say('当前已有多连接或混合协议配置，请从管理页（桌面版应用菜单）打开控制面板维护。首次设置页不会覆盖这类配置。');
       return;
     }
     previousModels=state.models;

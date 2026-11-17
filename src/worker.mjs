@@ -6,6 +6,7 @@ import { loadCore } from './core.mjs';
 import { createGuardedOnboarding } from './policy.mjs';
 import { backupFiles, kimiBackupFiles } from './migration.mjs';
 import { RelayPanelController, RelayPanel } from './panel.mjs';
+import { allowLocalPageNavigation } from './browser.mjs';
 
 const args = process.argv.slice(2);
 const option = name => args[args.indexOf(name) + 1];
@@ -78,14 +79,21 @@ async function startPanel() {
 
 async function startSetup() {
   const colocated = fileURLToPath(new URL('./ui/', import.meta.url));
-  setup = new SetupServer({ stateDir, uiDir: fs.existsSync(colocated) ? colocated : fileURLToPath(new URL('../ui/', import.meta.url)),
+  class BrowserSetup extends SetupServer {
+    handle(req, res) { allowLocalPageNavigation(req); return super.handle(req, res); }
+  }
+  setup = new BrowserSetup({ stateDir, uiDir: fs.existsSync(colocated) ? colocated : fileURLToPath(new URL('../ui/', import.meta.url)),
     onSaved: () => { void startPanel().catch(error => failure(error.message)); } });
   const save = setup.save.bind(setup);
   setup.save = async input => {
     // Back up our own previous settings before an authenticated form can save.
     const existing = [configFile, path.join(stateDir, 'credentials.json'), path.join(stateDir, 'setup-receipt.json')];
     if (existing.some(file => fs.existsSync(file))) backupFiles(existing, path.join(stateDir, 'backups'));
-    return save({ ...input, dns: input.dns === true, installService: false });
+    const saved = await save({ ...input, dns: input.dns === true, installService: false });
+    // The browser edition has no Electron navigation listener. Authenticated
+    // setup polling waits for the panel started by onSaved, including retries.
+    setup.pendingPanel = { reason: 'panel_not_ready', previousEntryURL: null };
+    return saved;
   };
   send({ event: 'ready', mode: 'setup', url: await setup.start() });
 }

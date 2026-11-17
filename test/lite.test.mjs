@@ -2,6 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LiteControl, liteStateDirectory } from '../src/lite-control.mjs';
 import path from 'node:path';
+import { allowLocalPageNavigation } from '../src/browser.mjs';
+
+test('cross-port navigation permits public HTML only, preserving API CSRF guards', () => {
+  const headers = { 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document', 'sec-fetch-site': 'same-site' };
+  const page = { method: 'GET', url: '/', headers: { ...headers } };
+  allowLocalPageNavigation(page);
+  assert.equal(page.headers['sec-fetch-site'], 'none');
+  for (const request of [
+    { method: 'GET', url: '/api/state', headers: { ...headers } },
+    { method: 'POST', url: '/', headers: { ...headers } },
+    { method: 'GET', url: '/', headers: { ...headers, origin: 'http://other.test' } },
+    { method: 'GET', url: '/', headers: { ...headers, 'sec-fetch-mode': 'cors' } },
+  ]) {
+    allowLocalPageNavigation(request);
+    assert.equal(request.headers['sec-fetch-site'], 'same-site');
+  }
+});
 
 test('Lite reuses desktop data unless portable data was explicitly selected', () => {
   assert.equal(liteStateDirectory({ platform: 'win32', env: { APPDATA: 'C:/Users/test/AppData/Roaming' }, home: '/test' }),
