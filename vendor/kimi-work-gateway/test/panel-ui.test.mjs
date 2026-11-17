@@ -1,0 +1,1383 @@
+import { expect, test } from 'bun:test';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+function element() {
+  return { dataset: {}, style: {}, textContent: '', value: '', checked: false, disabled: false,
+    hidden: false, scrollTop: 0, firstChild: null, id: '', type: '', attrs: {},
+    events: new Map(), children: [], classList: { add() {}, remove() {}, toggle() {} },
+    addEventListener(name, handler) { this.events.set(name, handler); },
+    setAttribute(name, value) { this.attrs[name] = String(value); },
+    append(...appended) { this.children.push(...appended.map((child) => (child && typeof child === 'object' ? { ...child, dataset: { ...child.dataset } } : child))); },
+    appendChild(child) { this.children.push(child); }, replaceChildren(...children) { this.children = children; },
+    removeChild(child) { this.children = this.children.filter((entry) => entry !== child); },
+    querySelectorAll: () => [], querySelector: () => null, closest: () => null, focus() {} };
+}
+
+const MODEL = 'group/deepseek-v4-1-flash';
+const ALIAS = 'byok-kth-resp/' + MODEL;
+
+function models() {
+  return [
+    { id: MODEL, name: 'DeepSeek V4.1 Flash', protocol: 'responses', contextWindow: 128000,
+      maxOutputTokens: 8192, tools: true, reasoning: true, inputModalities: ['text'],
+      reasoningEfforts: ['low', 'high'], defaultEffort: 'high' },
+    { id: 'other/deepseek-v4-1-flash', protocol: 'responses', contextWindow: 64000, tools: true },
+  ];
+}
+
+function baseState(overrides = {}) {
+  return {
+    schemaVersion: 1,
+    revision: 'a'.repeat(64),
+    configuration: { state: 'ready', file: 'gateway.json' },
+    gateway: { state: 'running', url: 'http://127.0.0.1:3426/v1', modelCount: 2, activeRequests: 0 },
+    models: models(),
+    subagents: {
+      configured: { mode: 'force', model: MODEL, modelAlias: ALIAS, effort: 'low' },
+      policy: { mode: 'force', model: MODEL, modelAlias: ALIAS, effort: 'low' },
+      runtime: { state: 'loaded', mode: 'force', modelAlias: ALIAS, version: '3.2.21' },
+    },
+    connection: {
+      active: { upstream: { baseURL: 'https://api.example.com/v1', apiKeyEnv: 'UPSTREAM_API_KEY' },
+        tokenEnv: 'KIMI_WORK_GATEWAY_TOKEN', port: 3426, dns: { enabled: false, port: 53535 } },
+      saved: null,
+      environment: { apiKeySet: true, tokenSet: true },
+    },
+    metrics: { startedAt: 1, requests: 3, failures: 1, recent: [] },
+    diagnostics: {},
+    setup: {},
+    operation: null,
+    ...overrides,
+  };
+}
+
+function translationState(overrides = {}) {
+  return {
+    configured: { enabled: false, provider: 'bing', targetLanguage: 'zh', view: 'translated',
+      customEndpoint: '', customModel: '', apiKeyEnv: 'KIMI_WORK_TRANSLATION_API_KEY' },
+    environment: { keySet: false },
+    runtime: { state: 'disabled' },
+    ...overrides,
+  };
+}
+
+function ui({ routes = {}, hash = '' } = {}) {
+  const nodes = new Map();
+  const events = new Map();
+  const stored = new Map();
+  const requests = [];
+  const get = (id) => {
+    if (!nodes.has(id)) nodes.set(id, element());
+    return nodes.get(id);
+  };
+  const storage = {
+    getItem: (key) => stored.get(key) ?? null,
+    setItem: (key, value) => stored.set(key, value),
+    removeItem: (key) => stored.delete(key),
+  };
+  const window = { location: { hash, pathname: '/', search: '' },
+    addEventListener: (name, handler) => events.set(name, handler),
+    setInterval: () => 1, clearInterval() {}, setTimeout: () => 1, clearTimeout() {},
+    matchMedia: () => ({ matches: false, addEventListener() {} }) };
+  const respond = (status, body) => ({ ok: status < 400, status,
+    headers: { get: () => 'application/json' }, json: async () => body });
+  const fetch = async (path, init = {}) => {
+    const entry = { path, method: init.method || 'GET', body: init.body ? JSON.parse(init.body) : undefined };
+    requests.push(entry);
+    const route = routes[path];
+    const handler = typeof route === 'function' ? route : route ? () => route : () => ({ status: 200, body: baseState() });
+    const out = (await handler(entry, requests)) || { status: 200, body: baseState() };
+    return respond(out.status ?? 200, out.body ?? out);
+  };
+  const context = vm.createContext({
+    document: { readyState: 'loading', hidden: false, documentElement: element(),
+      getElementById: get, addEventListener() {}, querySelectorAll: () => [],
+      createElement: element, createElementNS: element, createTextNode: (text) => ({ textContent: text }) },
+    window, localStorage: storage, sessionStorage: storage,
+    history: { replaceState() { window.location.hash = ''; } },
+    URL, URLSearchParams, requestAnimationFrame() {},
+    fetch,
+    IntersectionObserver: class { observe() {} disconnect() {} },
+  });
+  const source = fs.readFileSync(new URL('../ui/app.js', import.meta.url), 'utf8');
+  vm.runInContext(source + `
+globalThis.panelUI = { state, modelIdFromAlias, evaluateBinding, isInFlight, confirmActionResult,
+  buildModel, parseEfforts, catalogueWith, buildConnection, evaluateSubagentDraft, savedTarget,
+  adoptState, openEditor, closeEditor, editorDirty, saveCatalogue, modelFamilyFor, declaredEfforts,
+  hasVision, setView, renderAll, renderOverview, renderModels, renderSubagents, renderConnection,
+  renderOperation, loadState, readEditorFields, renderEditor, validateEditor,
+  buildTranslation, savedTranslation, evaluateTranslation, translationLaunchState, translationKey,
+  translationFormValues, fillTranslationForm, renderTranslation, saveTranslation, translationAvailable,
+  draftFromSaved, sameTarget, setMode, pickModel, pickEffort, pickPoolDefault, appendPoolModel,
+  removePoolModel, toggleTransport, discardDraft, poolRow, saveSubagentTarget,
+  routeIdFor, routingOf, connectionDraftFrom, connectionsSignature, connectionsDirty, connectionPayload,
+  validateConnectionDraft, contextDraftFrom, normalizedRatio, ratioToPercent, percentToRatio,
+  validateContextDraft, evaluateContext, contextDirty, rankedCandidates, connectionScore,
+  mcpServerPayload, toolsResultText, parseEnvLines, parseHeaderLines, toolsState, toolsAvailable,
+  renderConnections, renderContext, renderTools, renderPicker, saveConnections, saveContextPolicy,
+  submitTools, pickCandidate, metadataSourceOf, runConnectionCheck, connectionsAvailable,
+  evaluateUpdate, versionOrder };`, context);
+  return { ...context.panelUI, window, events, nodes, requests };
+}
+
+function messageOf(panel) {
+  return panel.nodes.get('toast').children.map((child) => child.textContent || '').join('');
+}
+
+test('native connection status distinguishes accepted pending imports, login and cancelled preparation', () => {
+  const panel = ui();
+  const render = integration => {
+    panel.renderOverview(baseState({ integration }));
+    return panel.nodes.get('native-state').textContent;
+  };
+  expect(render({ state: 'pending', imported: false })).toContain('等待 Kimi 内核');
+  expect(render({ state: 'needs-native-import', nativeImport: { reason: 'native_import_waiting_login' } })).toContain('登录');
+  expect(render({ preparation: { state: 'cancelled' } })).toContain('授权已取消');
+  expect(render({ imported: true })).toContain('已接入 Kimi 原生选择器');
+});
+
+test('desktop scope stays explicit and legacy remote evidence cannot become phone support', () => {
+  const panel = ui();
+  const render = integration => {
+    panel.renderOverview(baseState({ integration }));
+    const hidden = panel.nodes.get('native-remote').hidden;
+    return { hidden, word: panel.nodes.get('native-remote-word').textContent,
+      note: panel.nodes.get('native-remote-note').textContent,
+      tone: panel.nodes.get('native-remote-dot').dataset.tone };
+  };
+  expect(render(undefined).hidden).toBe(true);
+  expect(render({ state: 'ready', imported: true })).toMatchObject({ hidden: false, word: '仅桌面' });
+  const scoped = render({ state: 'ready', imported: true, desktop: { state: 'active', enabled: true,
+    remote: { state: 'ready', catalog: 'catalog-extended', added: 4, reason: 'synthetic-private-reason' } } });
+  expect(scoped).toMatchObject({ tone: 'neutral', word: '仅桌面' });
+  expect(scoped.note).toContain('不同步模型或登录态到 Kimi 手机端');
+  expect(scoped.note).not.toContain('catalog');
+  expect(scoped.note).not.toContain('synthetic-private-reason');
+});
+
+test('the panel resolves complete gateway model IDs without confusing provider prefixes', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+  expect(panel.modelIdFromAlias(MODEL)).toBe(MODEL);
+  expect(panel.modelIdFromAlias(ALIAS)).toBe(MODEL);
+  expect(panel.modelIdFromAlias('byok-kth-kimi/' + MODEL)).toBe(MODEL);
+  expect(panel.modelIdFromAlias('byok-kth-resp/other/deepseek-v4-1-flash')).toBe('other/deepseek-v4-1-flash');
+  expect(panel.modelIdFromAlias('unrecognized/deepseek-v4-1-flash')).toBeNull();
+});
+
+test('the panel only confirms force after the loaded runtime and applied policy match the saved target', () => {
+  const panel = ui();
+  const data = baseState();
+  panel.state.data = data;
+  expect(panel.evaluateBinding(data).word).toBe('已生效');
+  for (const change of [
+    (value) => { value.subagents.runtime.mode = 'inherit'; },
+    (value) => { value.subagents.runtime.state = 'waiting-launch'; },
+    (value) => { value.subagents.runtime.modelAlias = 'byok-kth-resp/other/deepseek-v4-1-flash'; },
+    (value) => { value.subagents.policy.effort = 'high'; },
+    (value) => { value.subagents.policy.model = 'other/deepseek-v4-1-flash'; },
+    (value) => { value.subagents.policy.mode = 'blocked'; },
+  ]) {
+    const mismatch = baseState();
+    change(mismatch);
+    panel.state.data = mismatch;
+    expect(panel.evaluateBinding(mismatch).word).not.toBe('已生效');
+  }
+});
+
+test('the panel confirms inheritance from the runtime mode rather than only the saved policy', () => {
+  const panel = ui();
+  const data = baseState();
+  data.subagents.configured = { mode: 'inherit' };
+  data.subagents.policy = { mode: 'inherit' };
+  panel.state.data = data;
+  expect(panel.evaluateBinding(data).word).not.toBe('继承已生效');
+  data.subagents.runtime = { state: 'loaded', mode: 'inherit' };
+  expect(panel.evaluateBinding(data).word).toBe('继承已生效');
+});
+
+test('a completed Kimi launch request does not permanently lock panel controls', () => {
+  const panel = ui();
+  expect(panel.isInFlight({ state: 'running' })).toBe(true);
+  for (const state of ['starting', 'waiting-kimi-exit', 'prepared', 'copied', 'passed', 'verified',
+    'failed', 'interrupted', 'unavailable']) {
+    expect(panel.isInFlight({ state })).toBe(false);
+  }
+});
+
+test('a panel first opened without a key can accept the complete startup link later', async () => {
+  const panel = ui();
+  expect(panel.state.key).toBeNull();
+  const receive = panel.events.get('hashchange');
+  expect(typeof receive).toBe('function');
+  panel.window.location.hash = '#key=unit-panel-session';
+  receive();
+  expect(panel.state.key).toBe('unit-panel-session');
+  expect(panel.window.location.hash).toBe('');
+  await Promise.resolve();
+});
+
+test('retrying the session gate successfully resumes periodic state refresh', async () => {
+  const panel = ui({ hash: '#key=unit-panel-session' });
+  await panel.nodes.get('gate-retry').events.get('click')();
+  expect(panel.state.started).toBe(true);
+  expect(panel.state.timer).not.toBeNull();
+});
+
+test('clipboard feedback only claims success for the matching completed operation', async () => {
+  const panel = ui();
+  panel.state.data = { operation: { id: 'owned-operation', state: 'running' } };
+  await panel.confirmActionResult('copy-token', 'owned-operation');
+  expect(messageOf(panel)).toBe('');
+  panel.state.data.operation = { id: 'another-operation', state: 'copied' };
+  await panel.confirmActionResult('copy-token', 'owned-operation');
+  expect(messageOf(panel)).toBe('');
+  panel.state.data.operation = { id: 'owned-operation', state: 'unavailable' };
+  await panel.confirmActionResult('copy-token', 'owned-operation');
+  expect(messageOf(panel)).toContain('未复制');
+  panel.state.data.operation = { id: 'owned-operation', state: 'copied' };
+  await panel.confirmActionResult('copy-token', 'owned-operation');
+  expect(messageOf(panel)).toContain('已由服务端写入系统剪贴板');
+});
+
+test('custom reasoning efforts serialize as declared identifiers and only a declared default is kept', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+
+  const built = panel.buildModel({ id: 'group/custom-model', context: '131072', output: '8192',
+    tools: true, reasoning: true, vision: false, efforts: 'Low, medium ,high,xhigh, my-tier', defaultEffort: 'xhigh' });
+  expect(built.errors).toEqual([]);
+  expect(built.model.reasoningEfforts).toEqual(['low', 'medium', 'high', 'xhigh', 'my-tier']);
+  expect(built.model.defaultEffort).toBe('xhigh');
+  expect(built.model.inputModalities).toEqual(['text']);
+
+  const undeclaredDefault = panel.buildModel({ id: 'group/custom-model', context: '8192',
+    reasoning: true, efforts: 'low', defaultEffort: 'high' });
+  expect(undeclaredDefault.errors.join(' ')).toContain('默认档位');
+
+  const invalid = panel.buildModel({ id: 'group/custom-model', context: '8192', reasoning: true, efforts: 'low, 3fast, Hi There' });
+  expect(invalid.errors.join(' ')).toContain('3fast');
+
+  const parsed = panel.parseEfforts('low, low, HIGH');
+  expect(parsed.list).toEqual(['low', 'high']);
+  expect(parsed.invalid).toEqual([]);
+
+  const noReasoning = panel.buildModel({ id: 'group/custom-model', context: '8192', reasoning: false, efforts: 'low' });
+  expect(noReasoning.model.reasoningEfforts).toBeUndefined();
+  expect(noReasoning.model.defaultEffort).toBeUndefined();
+});
+
+test('model protocol follows the last ID segment and vision changes the input modalities', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+  expect(panel.modelFamilyFor('kimi-group/kimi-k2')).toBe('chat');
+  expect(panel.modelFamilyFor('kimi-group/other-model')).toBe('responses');
+  expect(panel.modelFamilyFor('group/deepseek-v4-1-flash')).toBe('responses');
+  expect(panel.modelFamilyFor('')).toBeNull();
+
+  const chat = panel.buildModel({ id: 'group/kimi-k2', context: '262144', tools: true, vision: true });
+  expect(chat.model.protocol).toBe('chat');
+  expect(chat.model.inputModalities).toEqual(['text', 'image']);
+
+  const responses = panel.buildModel({ id: 'group/kimi-k2/glm-5', context: '262144' });
+  expect(responses.model.protocol).toBe('responses');
+  expect(responses.model.inputModalities).toEqual(['text']);
+});
+
+test('the catalogue editor replaces the edited row and appends new models without touching the rest', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+  const original = panel.state.data.models.map((model) => ({ ...model }));
+
+  panel.openEditor(panel.state.data.models[0]);
+  panel.state.editor.draft.context = '200000';
+  panel.state.editor.draft.efforts = 'low, medium, high';
+  panel.state.editor.draft.defaultEffort = 'medium';
+  const replaced = panel.catalogueWith(panel.state.editor, panel.state.data.models);
+
+  expect(replaced.length).toBe(2);
+  expect(replaced[0].id).toBe(MODEL);
+  expect(replaced[0].contextWindow).toBe(200000);
+  expect(replaced[0].reasoningEfforts).toEqual(['low', 'medium', 'high']);
+  expect(replaced[0].defaultEffort).toBe('medium');
+  expect(replaced[1]).toEqual(original[1]);
+
+  panel.closeEditor(true);
+  panel.openEditor(null);
+  panel.state.editor.draft.id = 'group/brand-new-model';
+  panel.state.editor.draft.context = '32768';
+  panel.state.editor.draft.tools = false;
+  const appended = panel.catalogueWith(panel.state.editor, panel.state.data.models);
+  expect(appended.length).toBe(3);
+  expect(appended[2].id).toBe('group/brand-new-model');
+  expect(appended[2].protocol).toBe('responses');
+  expect(appended[2].tools).toBe(false);
+});
+
+test('an undeclared effort is reported as a problem instead of being offered as supported', () => {
+  const panel = ui();
+  const data = baseState();
+  panel.state.data = data;
+
+  const declared = panel.evaluateSubagentDraft({ mode: 'force', transport: null, model: MODEL, effort: 'high', models: [] }, data);
+  expect(declared.problems).toEqual([]);
+
+  const undeclared = panel.evaluateSubagentDraft({ mode: 'force', transport: null, model: MODEL, effort: 'xhigh', models: [] }, data);
+  expect(undeclared.problems.join(' ')).toContain('未声明档位 xhigh');
+  expect(undeclared.problems.join(' ')).toContain('模型管理');
+
+  const noTools = panel.evaluateSubagentDraft({ mode: 'force', transport: null, model: 'group/text-only', effort: null, models: [] }, {
+    ...data,
+    models: [...data.models, { id: 'group/text-only', protocol: 'responses', contextWindow: 8192, tools: false }],
+  });
+  expect(noTools.problems.join(' ')).toContain('工具调用');
+
+  const inherit = panel.evaluateSubagentDraft({ mode: 'inherit', transport: null, model: null, effort: null, models: [] }, data);
+  expect(inherit.problems).toEqual([]);
+});
+
+test('a pool draft validates size, membership, default and purpose without inheriting any effort', () => {
+  const panel = ui();
+  const data = baseState();
+  panel.state.data = data;
+
+  const good = panel.evaluateSubagentDraft({
+    mode: 'pool', transport: 'native-config', model: MODEL, effort: null,
+    models: [{ id: MODEL, description: '默认兜底' }, { id: 'other/deepseek-v4-1-flash', description: '轻量任务' }],
+  }, data);
+  expect(good.problems).toEqual([]);
+
+  const empty = panel.evaluateSubagentDraft({ mode: 'pool', transport: 'native-config', model: MODEL, effort: null, models: [] }, data);
+  expect(empty.problems.join(' ')).toContain('候选列表为空');
+  expect(empty.problems.join(' ')).toContain('默认模型必须在候选列表中');
+
+  const noPurpose = panel.evaluateSubagentDraft({
+    mode: 'pool', transport: 'native-config', model: MODEL, effort: null,
+    models: [{ id: MODEL, description: '   ' }],
+  }, data);
+  expect(noPurpose.problems.join(' ')).toContain('用途说明');
+
+  const tooMany = panel.evaluateSubagentDraft({
+    mode: 'pool', transport: 'native-config', model: MODEL, effort: null,
+    models: Array.from({ length: 33 }, (_, index) => ({ id: 'm' + index, description: 'x' })),
+  }, data);
+  expect(tooMany.problems.join(' ')).toContain('最多 32 个');
+
+  const off = panel.poolRow('group/glm-5', ' line1\n line2\t ');
+  expect(off).toEqual({ id: 'group/glm-5', description: 'line1 line2' });
+});
+
+test('a polling refresh keeps an unsaved subagent draft and an unsaved connection draft', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+
+  panel.state.draft = { mode: 'force', transport: null, model: MODEL, effort: 'high', models: [] };
+  panel.state.draftDirty = true;
+  panel.nodes.get('c-base').value = 'https://edited.example.com/v1';
+  panel.state.conn.dirty = true;
+
+  const refreshed = baseState({ revision: 'b'.repeat(64) });
+  refreshed.subagents.configured = { mode: 'inherit' };
+  refreshed.subagents.policy = { mode: 'inherit' };
+  refreshed.subagents.runtime = { state: 'loaded', mode: 'inherit' };
+  refreshed.connection.saved = { upstream: { baseURL: 'https://saved.example.com/v1', apiKeyEnv: 'UPSTREAM_API_KEY' },
+    tokenEnv: 'KIMI_WORK_GATEWAY_TOKEN', port: 3426, dns: { enabled: false, port: 53535 } };
+
+  panel.adoptState(refreshed);
+
+  expect(panel.state.draft).toEqual({ mode: 'force', transport: null, model: MODEL, effort: 'high', models: [] });
+  expect(panel.state.draftDirty).toBe(true);
+  expect(panel.nodes.get('c-base').value).toBe('https://edited.example.com/v1');
+  expect(panel.state.data.revision).toBe('b'.repeat(64));
+});
+
+test('connection edits reject credentials, query strings and plain HTTP on non-loopback hosts', () => {
+  const panel = ui();
+  const valid = { apiKeyEnv: 'UPSTREAM_API_KEY', tokenEnv: 'KIMI_WORK_GATEWAY_TOKEN', port: 3426, dnsPort: 53535, dns: false };
+
+  expect(panel.buildConnection({ ...valid, baseURL: 'https://api.example.com/v1' }).errors).toEqual([]);
+  expect(panel.buildConnection({ ...valid, baseURL: 'https://api.example.com/v1' }).value.upstream.baseURL)
+    .toBe('https://api.example.com/v1');
+  expect(panel.buildConnection({ ...valid, baseURL: 'https://api.example.com/v1/' }).value.upstream.baseURL)
+    .toBe('https://api.example.com/v1');
+  expect(panel.buildConnection({ ...valid, baseURL: 'http://127.0.0.1:8080/v1' }).errors).toEqual([]);
+  expect(panel.buildConnection({ ...valid, baseURL: 'http://localhost:8080/v1' }).errors).toEqual([]);
+
+  expect(panel.buildConnection({ ...valid, baseURL: 'http://api.example.com/v1' }).errors.join(' ')).toContain('HTTPS');
+  expect(panel.buildConnection({ ...valid, baseURL: 'https://user:secret@api.example.com/v1' }).errors.join(' '))
+    .toContain('账号或密码');
+  expect(panel.buildConnection({ ...valid, baseURL: 'https://api.example.com/v1?key=1' }).errors.join(' '))
+    .toContain('查询参数');
+  expect(panel.buildConnection({ ...valid, baseURL: 'https://api.example.com/v1#x' }).errors.join(' '))
+    .toContain('查询参数');
+  expect(panel.buildConnection({ ...valid, baseURL: 'ftp://api.example.com/v1' }).errors.join(' ')).toContain('HTTPS');
+  expect(panel.buildConnection({ ...valid, baseURL: 'not a url' }).errors.join(' ')).toContain('URL');
+  expect(panel.buildConnection({ ...valid, baseURL: 'https://api.example.com/v1', apiKeyEnv: 'bad-name' }).errors.join(' '))
+    .toContain('变量名');
+  expect(panel.buildConnection({ ...valid, baseURL: 'https://api.example.com/v1', port: 70000 }).errors.join(' '))
+    .toContain('端口');
+  expect(panel.buildConnection({ ...valid, baseURL: 'https://api.example.com/v1', dnsPort: 80 }).errors.join(' '))
+    .toContain('DNS');
+});
+
+test('saving models posts the full catalogue with the revision and closes the editor on success', async () => {
+  const next = baseState({ revision: 'c'.repeat(64) });
+  const panel = ui({ hash: '#key=unit-panel-session',
+    routes: { '/api/models': { status: 200, body: { ok: true, state: next } } } });
+  panel.state.data = baseState();
+
+  panel.openEditor(panel.state.data.models[0]);
+  panel.state.editor.draft.context = '64000';
+  panel.state.editor.draft.efforts = 'low, high, xhigh';
+  const catalogue = panel.catalogueWith(panel.state.editor, panel.state.data.models);
+
+  await panel.saveCatalogue(catalogue);
+
+  const posted = panel.requests.filter((entry) => entry.path === '/api/models');
+  expect(posted.length).toBe(1);
+  expect(posted[0].method).toBe('POST');
+  expect(posted[0].body.revision).toBe('a'.repeat(64));
+  expect(posted[0].body.models.length).toBe(2);
+  expect(posted[0].body.models[0].contextWindow).toBe(64000);
+  expect(posted[0].body.models[0].reasoningEfforts).toEqual(['low', 'high', 'xhigh']);
+  expect(panel.state.editor).toBeNull();
+  expect(panel.state.data.revision).toBe('c'.repeat(64));
+  expect(messageOf(panel)).toContain('模型目录已保存');
+});
+
+test('a configuration conflict refreshes state but keeps the editor draft', async () => {
+  const panel = ui({
+    hash: '#key=unit-panel-session',
+    routes: {
+      '/api/models': { status: 409, body: { error: { code: 'configuration_conflict', message: '配置已经变更，请刷新后重新应用。' } } },
+      '/api/state': { status: 200, body: baseState({ revision: 'd'.repeat(64) }) },
+    },
+  });
+  panel.state.data = baseState();
+
+  panel.openEditor(panel.state.data.models[0]);
+  panel.state.editor.draft.context = '64000';
+  const catalogue = panel.catalogueWith(panel.state.editor, panel.state.data.models);
+
+  await panel.saveCatalogue(catalogue);
+
+  expect(panel.state.editor).not.toBeNull();
+  expect(panel.state.editor.draft.context).toBe('64000');
+  expect(panel.state.data.revision).toBe('d'.repeat(64));
+  expect(messageOf(panel)).toContain('保留');
+});
+
+test('an empty request list clears its loading message on the initial render and subsequent refreshes', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+  const empty = panel.nodes.get('recent-empty');
+  for (let refresh = 0; refresh < 2; refresh++) {
+    empty.textContent = '正在读取运行状态…';
+    panel.renderOverview(panel.state.data);
+    expect(empty.textContent).toBe('尚无推理请求。Kimi 开始调用模型后，这里会出现最近的 20 条记录。');
+    expect(empty.hidden).toBe(false);
+  }
+});
+
+test('every view renders against a full, empty and disconnected state without throwing', () => {
+  const panel = ui();
+  const states = [
+    baseState(),
+    baseState({ models: [], configuration: { state: 'unavailable', file: 'gateway.json' },
+      subagents: { configured: { mode: 'inherit' }, policy: { mode: 'inherit' }, runtime: { state: 'unavailable' } },
+      connection: { active: null, saved: null, environment: { apiKeySet: false, tokenSet: false } },
+      metrics: { startedAt: 0, requests: 0, failures: 0, recent: [] }, diagnostics: {} }),
+    baseState({ configuration: { state: 'changed', file: 'gateway.json' },
+      connection: { active: baseState().connection.active,
+        saved: { upstream: { baseURL: 'https://new.example.com/v1', apiKeyEnv: 'NEXT_KEY' },
+          tokenEnv: 'NEXT_TOKEN', port: 3428, dns: { enabled: true, port: 53535 } },
+        environment: { apiKeySet: false, tokenSet: false } },
+      diagnostics: { upstream: { state: 'failed', at: 1, httpStatus: 500, ms: 12, reason: 'upstream_http_error' },
+        compat: { state: 'incompatible', at: 2, version: '3.2.21', modelCount: 2, acceptedCount: 1, skippedCount: 1 } } }),
+  ];
+
+  for (const data of states) {
+    panel.state.data = data;
+    panel.state.draft = panel.savedTarget(data);
+    panel.state.draftDirty = false;
+    panel.state.editor = null;
+    panel.state.deleteId = null;
+    expect(() => panel.renderAll()).not.toThrow();
+    for (const view of ['overview', 'models', 'subagents', 'translation', 'connection']) {
+      expect(() => panel.setView(view)).not.toThrow();
+    }
+  }
+
+  const empty = panel.state.data;
+  expect(panel.nodes.get('model-empty-title').textContent).toBe('目录为空');
+  expect(empty.configuration.state).toBe('changed');
+});
+
+test('typing into the inspector survives every re-render and reaches the catalogue unchanged', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+  panel.state.draft = { mode: 'force', transport: null, model: MODEL, effort: 'low', models: [] };
+  panel.state.draftDirty = false;
+  panel.openEditor(panel.state.data.models[0]);
+
+  const contextInput = panel.nodes.get('m-context');
+  for (const typed of ['2', '25', '256', '2560', '25600']) {
+    contextInput.value = typed;
+    panel.readEditorFields();
+    panel.renderEditor();
+  }
+  panel.nodes.get('m-efforts').value = 'low, medium, high, xhigh';
+  panel.readEditorFields();
+  panel.renderEditor();
+  panel.nodes.get('m-default').value = 'xhigh';
+  panel.readEditorFields();
+  panel.renderEditor();
+
+  expect(panel.state.editor.draft.context).toBe('25600');
+  expect(panel.editorDirty()).toBe(true);
+
+  const catalogue = panel.catalogueWith(panel.state.editor, panel.state.data.models);
+  expect(catalogue[0].contextWindow).toBe(25600);
+  expect(catalogue[0].reasoningEfforts).toEqual(['low', 'medium', 'high', 'xhigh']);
+  expect(catalogue[0].defaultEffort).toBe('xhigh');
+
+  panel.closeEditor(false);
+  expect(panel.state.editor.confirmClose).toBe(true);
+  panel.closeEditor(true);
+  expect(panel.state.editor).toBeNull();
+});
+
+test('an invalid effort identifier blocks the save and names the offending value', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+  panel.openEditor(panel.state.data.models[0]);
+  panel.nodes.get('m-reasoning').checked = true;
+  panel.nodes.get('m-efforts').value = 'low, HIGH, 2x';
+  panel.readEditorFields();
+  panel.renderEditor();
+
+  const text = panel.nodes.get('model-errors').children.map((child) => child.textContent || '').join(' ');
+  expect(text).toContain('2x');
+  expect(panel.nodes.get('model-save').disabled).toBe(true);
+
+  panel.nodes.get('m-efforts').value = 'low, high';
+  panel.readEditorFields();
+  panel.renderEditor();
+  expect(panel.nodes.get('model-errors').hidden).toBe(true);
+  expect(panel.nodes.get('model-errors').children.length).toBe(0);
+
+  /* 修正后仍与已保存目录一致，保存按钮应保持禁用，直到真的有改动。 */
+  expect(panel.nodes.get('model-save').disabled).toBe(true);
+  panel.nodes.get('m-context').value = '200000';
+  panel.readEditorFields();
+  panel.renderEditor();
+  expect(panel.nodes.get('model-save').disabled).toBe(false);
+});
+
+test('switching views hides every other section and marks exactly one navigation item current', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+  panel.state.draft = panel.savedTarget(panel.state.data);
+  panel.state.draftDirty = false;
+
+  for (const view of ['overview', 'models', 'subagents', 'translation', 'connection']) {
+    panel.setView(view);
+    const visible = ['overview', 'models', 'subagents', 'translation', 'connection']
+      .filter((name) => !panel.nodes.get('view-' + name).hidden);
+    expect(visible).toEqual([view]);
+    const current = ['overview', 'models', 'subagents', 'translation', 'connection']
+      .filter((name) => panel.nodes.get('nav-' + name).attrs['aria-current'] === 'page');
+    expect(current).toEqual([view]);
+  }
+
+  panel.setView('not-a-view');
+  expect(panel.state.view).toBe('overview');
+});
+
+test('the translation view is unavailable rather than broken when the service omits the field', () => {
+  const panel = ui();
+  panel.state.data = baseState();
+  panel.state.draft = panel.savedTarget(panel.state.data);
+  panel.state.draftDirty = false;
+
+  expect(() => panel.renderAll()).not.toThrow();
+  expect(() => panel.setView('translation')).not.toThrow();
+
+  expect(panel.nodes.get('tr-unavailable').hidden).toBe(false);
+  expect(panel.nodes.get('tr-enabled').disabled).toBe(true);
+  expect(panel.nodes.get('tr-save').disabled).toBe(true);
+  expect(panel.nodes.get('tr-launch').disabled).toBe(true);
+  expect(panel.nodes.get('tr-check').disabled).toBe(true);
+  expect(panel.evaluateTranslation(panel.state.data).word).toBe('不可用');
+  expect(panel.translationAvailable(panel.state.data)).toBe(false);
+});
+
+test('translation defaults to off with normalized settings from the panel state', () => {
+  const panel = ui();
+  const data = baseState({ translation: translationState() });
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+  panel.renderTranslation();
+
+  expect(panel.nodes.get('tr-enabled').checked).toBe(false);
+  expect(panel.nodes.get('tr-provider').value).toBe('bing');
+  expect(panel.nodes.get('tr-target').value).toBe('zh');
+  expect(panel.nodes.get('tr-view').value).toBe('translated');
+  expect(panel.nodes.get('tr-custom').hidden).toBe(true);
+  expect(panel.nodes.get('tr-save').disabled).toBe(true);
+  expect(panel.nodes.get('tr-launch').disabled).toBe(true);
+  expect(panel.nodes.get('tr-draft').textContent).toBe('草稿与已保存一致');
+
+  const odd = baseState({ translation: translationState({
+    configured: { enabled: true, provider: 'unknown', targetLanguage: 'xx', view: 'sideways' },
+  }) });
+  expect(panel.savedTranslation(odd)).toEqual({ enabled: true, provider: 'bing', targetLanguage: 'zh',
+    view: 'translated', customEndpoint: '', customModel: '', apiKeyEnv: 'KIMI_WORK_TRANSLATION_API_KEY' });
+});
+
+test('custom translation validates its endpoint and variable name while allowing an optional model', () => {
+  const panel = ui();
+  const base = { enabled: true, provider: 'custom', targetLanguage: 'ja', view: 'original',
+    customEndpoint: 'https://translate.example.com/v1/chat/completions', customModel: 'small-model',
+    apiKeyEnv: 'TRANSLATION_KEY' };
+  expect(panel.buildTranslation(base)).toEqual({ errors: [], value: base });
+  expect(panel.buildTranslation({ ...base, customEndpoint: 'http://127.0.0.1:8080/v1/chat/completions' }).errors).toEqual([]);
+  expect(panel.buildTranslation({ ...base, customEndpoint: '' }).errors.join(' ')).toContain('Chat Completions');
+  expect(panel.buildTranslation({ ...base, customEndpoint: 'http://translate.example.com/v1' }).errors.join(' ')).toContain('HTTPS');
+  expect(panel.buildTranslation({ ...base, customEndpoint: 'https://user:secret@translate.example.com/v1' }).errors.join(' ')).toContain('账号或密码');
+  expect(panel.buildTranslation({ ...base, customEndpoint: 'https://translate.example.com/v1?key=1' }).errors.join(' ')).toContain('查询参数');
+  expect(panel.buildTranslation({ ...base, customModel: '' }).errors).toEqual([]);
+  expect(panel.buildTranslation({ ...base, customModel: 'm'.repeat(2048) }).errors).toEqual([]);
+  expect(panel.buildTranslation({ ...base, customModel: 'm'.repeat(2049) }).errors.join(' ')).toContain('模型名称');
+  expect(panel.buildTranslation({ ...base, customModel: 'bad\nmodel' }).errors.join(' ')).toContain('控制字符');
+  expect(panel.buildTranslation({ ...base, apiKeyEnv: 'bad-name' }).errors.join(' ')).toContain('变量名');
+  expect(panel.buildTranslation({ ...base, apiKeyEnv: 'A'.repeat(129) }).errors.join(' ')).toContain('变量名');
+  const publicProvider = panel.buildTranslation({ ...base, provider: 'google', customEndpoint: 'not a url' });
+  expect(publicProvider.errors).toEqual([]);
+  expect(publicProvider.value).toMatchObject({ customEndpoint: '', customModel: 'small-model', apiKeyEnv: 'TRANSLATION_KEY' });
+  expect(panel.buildTranslation({ ...base, apiKeyEnv: '' }).value.apiKeyEnv).toBe('KIMI_WORK_TRANSLATION_API_KEY');
+});
+
+test('only a runtime-confirmed active state counts as injected translation', () => {
+  const panel = ui();
+
+  const disabled = baseState({ translation: translationState({ runtime: { state: 'disabled' } }) });
+  expect(panel.evaluateTranslation(disabled).word).toBe('已关闭');
+
+  const active = baseState({ translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    runtime: { state: 'active', version: '3.2.21', pid: 4321 },
+  }) });
+  expect(panel.evaluateTranslation(active)).toEqual({ tone: 'ok', word: '已注入', note: 'Kimi 已确认翻译引擎在运行。' });
+
+  const enabledNotInjected = baseState({ translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    runtime: { state: 'inactive' },
+  }) });
+  expect(panel.evaluateTranslation(enabledNotInjected).word).toBe('未生效');
+  const pending = baseState({ translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    runtime: { state: 'pending-settings' },
+  }) });
+  expect(panel.evaluateTranslation(pending).word).toBe('正在应用');
+  const stopping = baseState({ translation: translationState({ runtime: { state: 'pending-settings' } }) });
+  expect(panel.evaluateTranslation(stopping).word).toBe('等待停用确认');
+  expect(panel.evaluateTranslation(baseState({ translation: translationState({ runtime: { state: 'stale' } }) })).word).toBe('停用未确认');
+
+  const waiting = baseState({ translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    runtime: { state: 'waiting-kimi-exit' },
+  }) });
+  expect(panel.evaluateTranslation(waiting).note).toContain('正常退出');
+
+  const incompatible = baseState({ translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    runtime: { state: 'incompatible', reason: 'version-unsupported' },
+  }) });
+  expect(panel.evaluateTranslation(incompatible)).toEqual({ tone: 'bad', word: '不兼容',
+    note: '没有找到可注入的 Kimi 渲染入口，或页面结构与翻译引擎不匹配。' });
+
+  const legacy = baseState({ translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    runtime: { state: 'legacy-running' },
+  }) });
+  expect(panel.evaluateTranslation(legacy).note).toContain('旧注入');
+
+  expect(panel.evaluateTranslation(active, { dirty: true }).word).toBe('有未保存修改');
+  expect(panel.evaluateTranslation(active, { dirty: true }).note).toContain('当前运行状态未改变');
+});
+
+// A Chat page is a different surface from Work, and an empty conversation is a
+// different fact from drifted selectors. Both used to read as "injected".
+test('the panel names the Chat surface and distinguishes empty from drifted structure', () => {
+  const panel = ui();
+  const withSurfaces = surfaces => baseState({ translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    runtime: { state: 'active', surfaces },
+  }) });
+
+  expect(panel.evaluateTranslation(withSurfaces({
+    chat: { state: 'active', structure: 'none', blocks: 0, seenBlocks: 0 },
+  }))).toEqual({ tone: 'ok', word: '已注入', note: 'Chat：页面上还没有可以翻译的思考内容。' });
+
+  expect(panel.evaluateTranslation(withSurfaces({
+    chat: { state: 'active', structure: 'partial', blocks: 1, seenBlocks: 3 },
+  })).note).toBe('Chat：检测到思考块但结构与翻译引擎不匹配，可能是不兼容的界面版本。');
+
+  expect(panel.evaluateTranslation(withSurfaces({
+    work: { state: 'active', structure: 'matched', blocks: 2, seenBlocks: 2 },
+  }))).toEqual({ tone: 'ok', word: '已注入', note: 'Work：翻译已就绪。' });
+
+  // Both surfaces at once are reported together, Work first.
+  expect(panel.evaluateTranslation(withSurfaces({
+    chat: { state: 'active', structure: 'none' },
+    work: { state: 'active', structure: 'matched' },
+  })).note).toBe('Work：翻译已就绪。 Chat：页面上还没有可以翻译的思考内容。');
+
+  // The new waiting reason has real copy instead of the raw machine code.
+  const waitingChat = baseState({ translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    runtime: { state: 'attaching', reason: 'translation_waiting_chat_view' },
+  }) });
+  const note = panel.evaluateTranslation(waitingChat).note;
+  expect(note).toBe('已连接 Kimi，正在等待打开 Chat 会话中的思考内容。');
+  expect(note).not.toContain('translation_');
+});
+
+test('launching translated Kimi needs a saved enabled configuration and no unsaved draft', () => {
+  const panel = ui();
+  const disabled = baseState({ translation: translationState() });
+  expect(panel.translationLaunchState(disabled).ready).toBe(false);
+  expect(panel.translationLaunchState(disabled).problems.join(' ')).toContain('启用');
+
+  const enabled = baseState({ translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    runtime: { state: 'inactive' },
+  }) });
+  expect(panel.translationLaunchState(enabled)).toEqual({ problems: [], ready: true });
+  expect(panel.translationLaunchState(enabled, { dirty: true }).problems.join(' ')).toContain('未保存');
+
+  const notReady = baseState({ configuration: { state: 'changed', file: 'gateway.json' },
+    translation: translationState({ configured: { ...translationState().configured, enabled: true } }) });
+  expect(panel.translationLaunchState(notReady).problems.join(' ')).toContain('重启');
+
+  panel.state.data = disabled;
+  panel.renderTranslation();
+  expect(panel.nodes.get('tr-launch').disabled).toBe(true);
+});
+
+test('a two-second polling refresh keeps an unsaved translation draft', () => {
+  const panel = ui();
+  const data = baseState({ translation: translationState() });
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+
+  panel.nodes.get('tr-enabled').checked = true;
+  panel.nodes.get('tr-provider').value = 'google';
+  panel.nodes.get('tr-target').value = 'ko';
+  panel.renderTranslation();
+  expect(panel.state.translation.dirty).toBe(true);
+
+  const refreshed = baseState({ revision: 'b'.repeat(64), translation: translationState({
+    configured: { ...translationState().configured, enabled: true, provider: 'custom',
+      targetLanguage: 'fr', customEndpoint: 'https://saved.example.com/v1', customModel: 'saved-model' },
+    runtime: { state: 'active', version: '3.2.21', pid: 99 },
+  }) });
+  panel.adoptState(refreshed);
+
+  expect(panel.nodes.get('tr-enabled').checked).toBe(true);
+  expect(panel.nodes.get('tr-provider').value).toBe('google');
+  expect(panel.nodes.get('tr-target').value).toBe('ko');
+  expect(panel.state.translation.dirty).toBe(true);
+  expect(panel.state.data.revision).toBe('b'.repeat(64));
+
+  panel.setView('translation');
+  expect(panel.nodes.get('tr-runtime').textContent).toBe('已注入');
+  expect(panel.nodes.get('tr-pid').textContent).toBe('99');
+  expect(panel.nodes.get('tr-verdict-word').textContent).toBe('有未保存修改');
+});
+
+test('saving translation posts every setting with the revision and never claims injection', async () => {
+  const saved = baseState({ revision: 'c'.repeat(64), translation: translationState({
+    configured: { enabled: true, provider: 'custom', targetLanguage: 'ja', view: 'original',
+      customEndpoint: 'https://translate.example.com/v1/chat/completions', customModel: 'small-model',
+      apiKeyEnv: 'TRANSLATION_KEY' },
+    environment: { keySet: true },
+    runtime: { state: 'pending-settings' },
+    revision: 'e'.repeat(64),
+  }) });
+  const panel = ui({ hash: '#key=unit-panel-session',
+    routes: { '/api/translation': { status: 200, body: { ok: true, state: saved } } } });
+  panel.state.data = baseState({ revision: 'a'.repeat(64),
+    translation: translationState({ revision: 'e'.repeat(64) }) });
+  panel.adoptState(panel.state.data, { initial: true });
+
+  panel.nodes.get('tr-enabled').checked = true;
+  panel.nodes.get('tr-provider').value = 'custom';
+  panel.nodes.get('tr-target').value = 'ja';
+  panel.nodes.get('tr-view').value = 'original';
+  panel.nodes.get('tr-endpoint').value = 'https://translate.example.com/v1/chat/completions';
+  panel.nodes.get('tr-model').value = 'small-model';
+  panel.nodes.get('tr-keyenv').value = 'TRANSLATION_KEY';
+  panel.renderTranslation();
+
+  expect(await panel.saveTranslation()).toBe(true);
+
+  const posted = panel.requests.filter((entry) => entry.path === '/api/translation');
+  expect(posted.length).toBe(1);
+  expect(posted[0].method).toBe('POST');
+  /* 双锁同发：revision 是 gateway.json 整体修订（历史 CAS），translationRevision
+     是翻译设置自己的修订，服务端把它作为 CAS 令牌下传给运行时写入；设置在
+     别处被改过时服务端以 409 translation_settings_conflict 拒绝。 */
+  expect(posted[0].body).toEqual({ revision: 'a'.repeat(64), translationRevision: 'e'.repeat(64),
+    enabled: true, provider: 'custom',
+    targetLanguage: 'ja', view: 'original', customEndpoint: 'https://translate.example.com/v1/chat/completions',
+    customModel: 'small-model', apiKeyEnv: 'TRANSLATION_KEY' });
+
+  const toast = messageOf(panel);
+  expect(toast).toContain('已保存');
+  expect(toast).toContain('以运行时状态为准');
+  expect(toast).not.toContain('已注入');
+  expect(panel.nodes.get('tr-verdict-word').textContent).toBe('正在应用');
+});
+
+test('a translation conflict refreshes state but keeps the unsaved draft', async () => {
+  const refreshed = baseState({ revision: 'd'.repeat(64), translation: translationState({
+    configured: { ...translationState().configured, enabled: true, provider: 'bing', targetLanguage: 'en' },
+  }) });
+  const panel = ui({
+    hash: '#key=unit-panel-session',
+    routes: {
+      '/api/translation': { status: 409, body: { error: { code: 'configuration_conflict', message: '配置已经变更。' } } },
+      '/api/state': { status: 200, body: refreshed },
+    },
+  });
+  panel.state.data = baseState({ translation: translationState() });
+  panel.adoptState(panel.state.data, { initial: true });
+
+  panel.nodes.get('tr-enabled').checked = true;
+  panel.nodes.get('tr-target').value = 'ru';
+  panel.renderTranslation();
+
+  expect(await panel.saveTranslation()).toBe(false);
+
+  expect(panel.state.data.revision).toBe('d'.repeat(64));
+  expect(panel.nodes.get('tr-enabled').checked).toBe(true);
+  expect(panel.nodes.get('tr-target').value).toBe('ru');
+  expect(panel.state.translation.dirty).toBe(true);
+  expect(messageOf(panel)).toContain('保留');
+});
+
+test('translation action receipts report the runtime result rather than the accepted request', async () => {
+  const panel = ui();
+
+  panel.state.data = baseState({ operation: { id: 'op-1', state: 'starting', action: 'launch-translated-kimi' },
+    translation: translationState({ configured: { ...translationState().configured, enabled: true },
+      runtime: { state: 'starting' } }) });
+  await panel.confirmActionResult('launch-translated-kimi', 'op-1');
+  expect(messageOf(panel)).toContain('等待运行时确认');
+
+  panel.state.data = baseState({ operation: { id: 'op-2', state: 'done', action: 'launch-translated-kimi' },
+    translation: translationState({ configured: { ...translationState().configured, enabled: true },
+      runtime: { state: 'active', version: '3.2.21' } }) });
+  await panel.confirmActionResult('launch-translated-kimi', 'op-2');
+  expect(messageOf(panel)).toContain('翻译已注入');
+
+  panel.state.data = baseState({ operation: { id: 'op-3', state: 'done', action: 'check-translation' },
+    translation: translationState({ configured: { ...translationState().configured, enabled: true },
+      runtime: { state: 'inactive' } }) });
+  await panel.confirmActionResult('check-translation', 'op-3');
+  expect(messageOf(panel)).toContain('注入尚未确认');
+  expect(messageOf(panel)).not.toContain('翻译已注入');
+
+  panel.state.data = baseState({ operation: { id: 'op-4', state: 'waiting-kimi-exit', action: 'launch-translated-kimi' },
+    translation: translationState({ configured: { ...translationState().configured, enabled: true },
+      runtime: { state: 'waiting-kimi-exit' } }) });
+  await panel.confirmActionResult('launch-translated-kimi', 'op-4');
+  expect(messageOf(panel)).toContain('正常退出');
+  expect(messageOf(panel)).toContain('不会强制结束');
+
+  panel.state.data = baseState({ operation: { id: 'op-5', state: 'done', action: 'check-translation' },
+    translation: translationState({ configured: { ...translationState().configured, enabled: true },
+      runtime: { state: 'incompatible', reason: 'version-unsupported' } }) });
+  await panel.confirmActionResult('check-translation', 'op-5');
+  expect(messageOf(panel)).toContain('渲染入口，或页面结构与翻译引擎不匹配');
+  expect(messageOf(panel)).not.toContain('。。');
+});
+
+const POOL_MODEL = 'group/glm-5';
+
+function poolBaseState(overrides = {}) {
+  const data = baseState(overrides);
+  data.models = [
+    ...data.models,
+    { id: POOL_MODEL, name: 'GLM-5', protocol: 'responses', contextWindow: 200000, tools: true,
+      reasoning: true, inputModalities: ['text'], reasoningEfforts: ['low', 'high'], defaultEffort: 'low' },
+  ];
+  return data;
+}
+
+test('an upgraded legacy force target keeps the copy channel until the user saves with the toggle on', () => {
+  const panel = ui();
+  const data = baseState();
+  data.subagents.configured = { mode: 'force', model: MODEL, modelAlias: ALIAS, effort: 'low' };
+  data.subagents.policy = { mode: 'force', model: MODEL, modelAlias: ALIAS, effort: 'low' };
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+  panel.setView('subagents');
+
+  expect(panel.state.draft).toEqual({ mode: 'force', transport: null, model: MODEL, effort: 'low', models: [] });
+  expect(panel.nodes.get('sa-native').checked).toBe(false);
+  expect(panel.nodes.get('sa-native-row').hidden).toBe(false);
+  expect(panel.nodes.get('sa-pool-fields').hidden).toBe(true);
+  expect(panel.nodes.get('sa-force-fields').hidden).toBe(false);
+  expect(panel.sameTarget(panel.state.draft, panel.savedTarget(data))).toBe(true);
+});
+
+test('saving a native-config force target posts the transport only after the user enabled it', async () => {
+  const next = baseState({ revision: 'c'.repeat(64) });
+  next.subagents.configured = { mode: 'force', transport: 'native-config', model: MODEL, modelAlias: ALIAS, effort: 'low' };
+  next.subagents.policy = { mode: 'force', transport: 'native-config', model: MODEL, modelAlias: ALIAS, effort: 'low' };
+  next.subagents.runtime = { state: 'file-applied', transport: 'native-config', mode: 'force', modelAlias: ALIAS, version: '3.2.21' };
+  const panel = ui({ hash: '#key=unit-panel-session',
+    routes: { '/api/subagents': { status: 200, body: { ok: true, state: next } } } });
+  panel.state.data = baseState();
+  panel.adoptState(panel.state.data, { initial: true });
+  panel.setView('subagents');
+
+  panel.nodes.get('mode-force').checked = true;
+  panel.setMode('force');
+  panel.pickModel(MODEL);
+  panel.toggleTransport(true);
+  expect(panel.state.draftDirty).toBe(true);
+  expect(panel.nodes.get('sa-native').checked).toBe(true);
+
+  await panel.saveSubagentTarget();
+
+  const posted = panel.requests.filter((entry) => entry.path === '/api/subagents');
+  expect(posted.length).toBe(1);
+  expect(posted[0].body).toEqual({ revision: 'a'.repeat(64), mode: 'force', model: MODEL, effort: 'low', transport: 'native-config' });
+  expect(panel.state.draft).toEqual({ mode: 'force', transport: 'native-config', model: MODEL, effort: 'low', models: [] });
+  expect(messageOf(panel)).toContain('配置写入与内核采用情况见运行时状态');
+
+  panel.renderSubagents();
+  expect(panel.nodes.get('rt-state').textContent).toBe('配置已写入');
+  expect(panel.nodes.get('rt-native-facts').hidden).toBe(false);
+  expect(panel.nodes.get('rt-compat').textContent).toBe('未验证');
+  expect(panel.evaluateBinding(next).word).toBe('已写入待内核采用');
+});
+
+test('pool mode collects candidates with purposes and posts them without an effort field', async () => {
+  const next = poolBaseState({ revision: 'c'.repeat(64) });
+  next.subagents.configured = { mode: 'pool', transport: 'native-config', model: MODEL, modelAlias: ALIAS,
+    models: [{ id: MODEL, modelAlias: ALIAS, description: '默认兜底' }, { id: POOL_MODEL, modelAlias: 'byok-kth-resp/' + POOL_MODEL, description: '代码审查' }] };
+  next.subagents.policy = next.subagents.configured;
+  next.subagents.runtime = { state: 'file-applied', transport: 'native-config', mode: 'pool', version: '3.2.21' };
+  const panel = ui({ hash: '#key=unit-panel-session',
+    routes: { '/api/subagents': { status: 200, body: { ok: true, state: next } } } });
+  panel.state.data = poolBaseState();
+  panel.adoptState(panel.state.data, { initial: true });
+
+  panel.setMode('pool');
+  expect(panel.state.draft.mode).toBe('pool');
+  expect(panel.state.draft.transport).toBe('native-config');
+  expect(panel.nodes.get('sa-native').checked).toBe(true);
+  expect(panel.nodes.get('sa-native').disabled).toBe(true);
+  expect(panel.nodes.get('sa-pool-fields').hidden).toBe(false);
+  expect(panel.nodes.get('sa-force-fields').hidden).toBe(true);
+
+  panel.appendPoolModel(MODEL, '默认兜底');
+  panel.appendPoolModel(POOL_MODEL, '负责\n代码审查与重构');
+  expect(panel.state.draft.models).toEqual([
+    { id: MODEL, description: '默认兜底' },
+    { id: POOL_MODEL, description: '负责 代码审查与重构' },
+  ]);
+  expect(panel.state.draft.model).toBeNull();
+
+  panel.pickPoolDefault(MODEL);
+  expect(panel.state.draft.model).toBe(MODEL);
+
+  panel.removePoolModel(POOL_MODEL);
+  expect(panel.state.draft.models).toEqual([{ id: MODEL, description: '默认兜底' }]);
+  expect(panel.nodes.get('sa-pool-list').children.length).toBe(1);
+  expect(panel.evaluateSubagentDraft(panel.state.draft, panel.state.data).problems).toEqual([]);
+
+  panel.appendPoolModel(POOL_MODEL, '负责代码审查与重构');
+  panel.pickPoolDefault(POOL_MODEL);
+  expect(panel.state.draft.model).toBe(POOL_MODEL);
+  panel.pickPoolDefault(MODEL);
+  expect(panel.state.draft.model).toBe(MODEL);
+
+  await panel.saveSubagentTarget();
+
+  const posted = panel.requests.filter((entry) => entry.path === '/api/subagents');
+  expect(posted.length).toBe(1);
+  expect(posted[0].body).toEqual({ revision: 'a'.repeat(64), mode: 'pool', transport: 'native-config',
+    model: MODEL, models: [{ id: MODEL, description: '默认兜底' }, { id: POOL_MODEL, description: '负责代码审查与重构' }] });
+  expect(posted[0].body.effort).toBeUndefined();
+  expect(panel.state.draft).toEqual({ mode: 'pool', transport: 'native-config', model: MODEL, effort: null,
+    models: [{ id: MODEL, description: '默认兜底' }, { id: POOL_MODEL, description: '代码审查' }] });
+
+  panel.renderSubagents();
+  expect(panel.nodes.get('rt-observed').textContent).toBe('尚未观察到');
+  const saved = panel.savedTarget(next);
+  expect(saved.mode).toBe('pool');
+  expect(saved.models).toEqual([{ id: MODEL, description: '默认兜底' }, { id: POOL_MODEL, description: '代码审查' }]);
+});
+
+test('the pool candidate select enables the append button through its change event and survives polling', () => {
+  const panel = ui();
+  const data = poolBaseState();
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+  panel.setMode('pool');
+
+  const add = panel.nodes.get('sa-pool-add');
+  const append = panel.nodes.get('sa-pool-append');
+  expect(append.disabled).toBe(true);
+  add.value = MODEL;
+  add.events.get('change')();
+  expect(append.disabled).toBe(false);
+
+  panel.renderSubagents();
+  expect(add.value).toBe(MODEL);
+  expect(append.disabled).toBe(false);
+
+  panel.appendPoolModel(MODEL, '默认兜底');
+  panel.pickPoolDefault(MODEL);
+  panel.renderSubagents();
+  expect(add.value).toBe('');
+  expect(append.disabled).toBe(true);
+});
+
+test('a pool candidate that left the catalog or lost tool support cannot be saved silently', () => {
+  const panel = ui();
+  const data = poolBaseState();
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+  panel.setMode('pool');
+  panel.appendPoolModel(MODEL, '默认兜底');
+  panel.appendPoolModel(POOL_MODEL, '代码审查');
+  panel.pickPoolDefault(MODEL);
+
+  const removed = poolBaseState();
+  removed.models = removed.models.filter((row) => row.id !== POOL_MODEL);
+  expect(panel.evaluateSubagentDraft(panel.state.draft, removed).problems.join(' ')).toContain('已不在目录中');
+
+  const incapable = poolBaseState();
+  incapable.models = incapable.models.map((row) => (row.id === POOL_MODEL ? { ...row, tools: false } : row));
+  expect(panel.evaluateSubagentDraft(panel.state.draft, incapable).problems.join(' ')).toContain('未声明工具调用');
+});
+
+test('native states that never wrote the file are not described as written', () => {
+  const panel = ui();
+  for (const [runtimeState, word, forbidden] of [['unverified', '未验证', '已写入本机配置文件'],
+    ['waiting-config', '配置待写入', '已写入本机配置文件']]) {
+    const data = baseState();
+    data.subagents.configured = { mode: 'force', transport: 'native-config', model: MODEL, modelAlias: ALIAS, effort: 'low' };
+    data.subagents.policy = data.subagents.configured;
+    data.subagents.runtime = { state: runtimeState, transport: 'native-config', mode: 'force' };
+    panel.state.data = data;
+    const verdict = panel.evaluateBinding(data);
+    expect(verdict.word).toBe(word);
+    expect(verdict.note).not.toContain(forbidden);
+  }
+});
+
+test('a native target shows the saved model instead of claiming none is fixed', () => {
+  const panel = ui();
+  const data = poolBaseState();
+  data.subagents.configured = { mode: 'force', transport: 'native-config', model: MODEL, modelAlias: ALIAS };
+  data.subagents.policy = data.subagents.configured;
+  data.subagents.runtime = { state: 'file-applied', transport: 'native-config', mode: 'force', version: '3.2.21' };
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+  panel.renderOverview(data);
+  panel.setView('subagents');
+  expect(panel.nodes.get('adopted-value').textContent).not.toBe('未固定模型');
+  expect(panel.nodes.get('adopted-value').textContent).toContain('DeepSeek');
+  expect(panel.nodes.get('adopted-sub').textContent).toContain('内核未回报具体模型');
+});
+
+test('removing the pool default or the last candidate surfaces the problem instead of saving', () => {
+  const panel = ui();
+  const data = poolBaseState();
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+  panel.setMode('pool');
+  panel.appendPoolModel(MODEL, '默认兜底');
+  panel.pickPoolDefault(MODEL);
+  panel.appendPoolModel(POOL_MODEL, '代码审查');
+
+  panel.removePoolModel(POOL_MODEL);
+  expect(panel.state.draft.models.length).toBe(1);
+  expect(panel.state.draft.model).toBe(MODEL);
+  expect(panel.evaluateSubagentDraft(panel.state.draft, data).problems).toEqual([]);
+
+  panel.removePoolModel(MODEL);
+  expect(panel.state.draft.models).toEqual([]);
+  expect(panel.state.draft.model).toBeNull();
+  const problems = panel.evaluateSubagentDraft(panel.state.draft, data).problems.join(' ');
+  expect(problems).toContain('候选列表为空');
+  expect(panel.nodes.get('sa-save').disabled).toBe(true);
+});
+
+test('an observed pool schema is reported as visible tooling, not as an adopted kernel decision', () => {
+  const panel = ui();
+  const data = poolBaseState();
+  data.subagents.configured = { mode: 'pool', transport: 'native-config', model: MODEL, modelAlias: ALIAS,
+    models: [{ id: MODEL, modelAlias: ALIAS, description: '默认兜底' }] };
+  data.subagents.policy = data.subagents.configured;
+  data.subagents.runtime = { state: 'file-applied', transport: 'native-config', mode: 'pool', version: '3.2.21',
+    compatibility: { state: 'source-compatible', version: '3.2.21', checks: {} },
+    observed: { state: 'observed-schema', at: 1750000000000 } };
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+
+  const verdict = panel.evaluateBinding(data);
+  expect(verdict.word).toBe('池已可见');
+  expect(verdict.note).toContain('只证明工具定义已更新');
+  expect(verdict.note).not.toContain('已采用');
+
+  panel.setView('subagents');
+  expect(panel.nodes.get('rt-observed').textContent).toContain('已出现在工具定义');
+  expect(panel.nodes.get('rt-compat').textContent).toBe('契约一致');
+  expect(panel.nodes.get('rt-compat-sub').textContent).toContain('3.2.21');
+});
+
+test('native targets keep legacy runtime states readable and never claim a copy-mode adoption', () => {
+  const panel = ui();
+  const data = baseState();
+  data.subagents.configured = { mode: 'force', transport: 'native-config', model: MODEL, modelAlias: ALIAS, effort: 'low' };
+  data.subagents.policy = data.subagents.configured;
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+
+  const copyStillActive = baseState();
+  copyStillActive.subagents.configured = data.subagents.configured;
+  copyStillActive.subagents.policy = data.subagents.configured;
+  copyStillActive.subagents.runtime = { state: 'loaded', mode: 'force', modelAlias: ALIAS, version: '3.2.21' };
+  const active = panel.evaluateBinding(copyStillActive);
+  expect(active.word).toBe('通道未切换');
+  expect(active.note).toContain('副本通道');
+
+  const waiting = baseState();
+  waiting.subagents.configured = data.subagents.configured;
+  waiting.subagents.policy = data.subagents.configured;
+  waiting.subagents.runtime = { state: 'waiting-config', transport: 'native-config', mode: 'force' };
+  const pending = panel.evaluateBinding(waiting);
+  expect(pending.tone).toBe('warn');
+
+  const inherit = baseState();
+  inherit.subagents.configured = data.subagents.configured;
+  inherit.subagents.policy = data.subagents.configured;
+  inherit.subagents.runtime = { state: 'inherit', transport: 'native-config' };
+  expect(panel.evaluateBinding(inherit).word).toBe('尚未接管');
+
+  const restored = baseState();
+  restored.subagents.configured = { mode: 'inherit' };
+  restored.subagents.policy = { mode: 'inherit' };
+  restored.subagents.runtime = { state: 'restored', transport: 'native-config' };
+  const info = panel.evaluateBinding(restored);
+  expect(info.word).toBe('已恢复原状');
+
+  const blocked = baseState();
+  blocked.subagents.configured = { mode: 'inherit' };
+  blocked.subagents.policy = { mode: 'inherit' };
+  blocked.subagents.runtime = { state: 'blocked', transport: 'native-config', reason: 'subagent_model_unavailable' };
+  const stopped = panel.evaluateBinding(blocked);
+  expect(stopped.tone).toBe('bad');
+});
+
+test('inherit drafts never carry a transport and revoking the panel target stays one save away', () => {
+  const panel = ui();
+  const data = baseState();
+  data.subagents.configured = { mode: 'pool', transport: 'native-config', model: MODEL, modelAlias: ALIAS,
+    models: [{ id: MODEL, modelAlias: ALIAS, description: '默认兜底' }] };
+  panel.state.data = data;
+  panel.adoptState(data, { initial: true });
+
+  panel.setMode('inherit');
+  expect(panel.state.draft).toEqual({ mode: 'inherit', transport: null, model: null, effort: null, models: [] });
+  expect(panel.state.draftDirty).toBe(true);
+  expect(panel.nodes.get('sa-native-row').hidden).toBe(true);
+  expect(panel.savedTarget(data).transport).toBe('native-config');
+});
+
+/* ---------- M43: restart guidance, per-connection checks, translation revision ---------- */
+
+function connectionsState(overrides = {}) {
+  return baseState({
+    connections: {
+      active: [
+        { id: 'conn-a', name: 'Provider A', baseURL: 'https://a.example/v1', apiKeyEnv: 'KIMI_WORK_CONN_A_KEY',
+          legacy: false, modelCount: 1, apiKeySet: true },
+      ],
+      saved: null,
+      restartRequired: false,
+    },
+    ...overrides,
+  });
+}
+
+test('restart guidance names the service commands only when a matching service record is reported', () => {
+  const panel = ui();
+  panel.state.data = connectionsState();
+  panel.setView('connection');
+  panel.renderConnection();
+  expect(panel.nodes.get('restart-head').textContent).toContain('终端完成');
+  expect(panel.nodes.get('restart-service').hidden).toBe(true);
+  expect(panel.nodes.get('restart-foreground').hidden).toBe(false);
+
+  panel.state.data = connectionsState({ service: { mode: 'service', label: 'dev.kimi-work-gateway',
+    config: 'gateway.json' } });
+  panel.renderConnection();
+  expect(panel.nodes.get('restart-head').textContent).toContain('后台服务');
+  expect(panel.nodes.get('restart-service').hidden).toBe(false);
+  expect(panel.nodes.get('restart-foreground').hidden).toBe(true);
+  expect(panel.nodes.get('restart-service-restart').textContent).toBe('kimi-work-gateway service restart');
+  expect(panel.nodes.get('restart-service-status').textContent).toBe('kimi-work-gateway service status');
+  expect(panel.nodes.get('restart-service-config').textContent).toBe('gateway.json');
+  const steps = panel.nodes.get('restart-service').children
+    .flatMap((child) => child.children || []).map((child) => child.textContent || '').join(' ');
+  expect(steps).not.toContain('Ctrl');
+
+  panel.state.data = connectionsState({ service: { mode: 'unrecognized' } });
+  panel.renderConnection();
+  expect(panel.nodes.get('restart-service').hidden).toBe(true);
+  expect(panel.nodes.get('restart-foreground').hidden).toBe(false);
+});
+
+test('an uninstalled or unrecognized service never claims the page can restart anything', () => {
+  const panel = ui();
+  for (const service of [null, { mode: 'unrecognized' }, {}]) {
+    panel.state.data = connectionsState({ service });
+    panel.renderConnection();
+    expect(panel.nodes.get('restart-service').hidden).toBe(true);
+    expect(panel.nodes.get('restart-foreground').hidden).toBe(false);
+    expect(panel.nodes.get('restart-head').textContent).toContain('终端完成');
+  }
+});
+
+test('connection rows offer an inline check and report its result per connection', async () => {
+  const op = { id: 'op-check-a', state: 'passed', httpStatus: 200, modelCount: 7, ms: 42,
+    connectionId: 'conn-a', action: 'check-upstream' };
+  const panel = ui({
+    hash: '#key=unit-panel-session',
+    routes: {
+      '/api/actions': { status: 202, body: { ok: true, operation: op } },
+      '/api/state': { status: 200, body: connectionsState() },
+    },
+  });
+  panel.state.data = connectionsState();
+  panel.adoptState(panel.state.data, { initial: true });
+  panel.renderConnections();
+
+  expect(await panel.runConnectionCheck('conn-a')).toMatchObject({ state: 'passed', connectionId: 'conn-a', busy: false });
+  const posted = panel.requests.filter((entry) => entry.path === '/api/actions');
+  expect(posted[0].body).toMatchObject({ action: 'check-upstream', connectionId: 'conn-a' });
+  expect(panel.state.connChecks['conn-a']).toMatchObject({ state: 'passed', busy: false });
+  expect(typeof posted[0].body.id).toBe('string');
+
+  const row = panel.nodes.get('conns-list').children[0];
+  const text = JSON.stringify(row);
+  expect(text).toContain('检查连接');
+  expect(text).toContain('连接可用：7 个模型');
+  expect(text).not.toContain('正在检查');
+});
+
+test('a failed inline check surfaces the reason and never reuses another row’s result', async () => {
+  const panel = ui({
+    hash: '#key=unit-panel-session',
+    routes: { '/api/actions': { status: 202, body: { ok: true, operation: {
+      id: 'op-check-b', state: 'failed', reason: 'upstream_http_error', httpStatus: 401,
+      connectionId: 'conn-a', action: 'check-upstream' } } } },
+  });
+  panel.state.data = connectionsState();
+  panel.adoptState(panel.state.data, { initial: true });
+  const recorded = await panel.runConnectionCheck('conn-a');
+  expect(recorded).toMatchObject({ state: 'failed', httpStatus: 401, connectionId: 'conn-a' });
+  expect(messageOf(panel)).toContain('检查未通过');
+});
+
+test('a check-upstream reply for a different connection is ignored, not adopted', async () => {
+  const panel = ui({
+    hash: '#key=unit-panel-session',
+    routes: { '/api/actions': { status: 202, body: { ok: true, operation: {
+      id: 'op-check-c', state: 'passed', connectionId: 'conn-other', action: 'check-upstream' } } } },
+  });
+  panel.state.data = connectionsState();
+  panel.adoptState(panel.state.data, { initial: true });
+  const recorded = await panel.runConnectionCheck('conn-a');
+  expect(recorded).toBeNull();
+  expect(messageOf(panel)).toContain('不符');
+});
+
+test('a stale translation settings revision refreshes state and keeps the draft', async () => {
+  const refreshed = baseState({ revision: 'f'.repeat(64), translation: translationState({
+    configured: { ...translationState().configured, enabled: true },
+    revision: '0'.repeat(64),
+  }) });
+  const panel = ui({
+    hash: '#key=unit-panel-session',
+    routes: {
+      '/api/translation': { status: 409, body: { error: { code: 'translation_settings_conflict',
+        message: '翻译设置已在别处被修改。', expectedRevision: '0'.repeat(64) } } },
+      '/api/state': { status: 200, body: refreshed },
+    },
+  });
+  panel.state.data = baseState({ revision: 'a'.repeat(64),
+    translation: translationState({ revision: 'e'.repeat(64) }) });
+  panel.adoptState(panel.state.data, { initial: true });
+
+  panel.nodes.get('tr-enabled').checked = true;
+  panel.renderTranslation();
+  expect(await panel.saveTranslation()).toBe(false);
+  expect(panel.state.data.revision).toBe('f'.repeat(64));
+  expect(panel.state.data.translation.revision).toBe('0'.repeat(64));
+  expect(panel.nodes.get('tr-enabled').checked).toBe(true);
+  /* 草稿仍在：409 后不回填表单，用户确认后可以原样重存。 */
+  expect(panel.state.translation.dirty).toBe(false);
+  expect(messageOf(panel)).toContain('重新保存');
+});
+
+/* ---------- M43 补充：本地版本高于最新 Release 时的更新文案 ---------- */
+
+test('a local version above the latest release reads as no update needed, not as the newest', () => {
+  const panel = ui();
+  const base = { state: 'current', currentVersion: '0.9.0', latestVersion: '0.8.0',
+    pendingVersion: null, rollbackVersion: null, checkedAt: 1 };
+
+  const ahead = panel.evaluateUpdate(baseState({ updates: base }));
+  expect(ahead.state).toBe('current');
+  expect(ahead.ahead).toBe(true);
+  expect(ahead.word).toBe('无需更新');
+  expect(ahead.note).toContain('0.9.0');
+  expect(ahead.note).toContain('0.8.0');
+  expect(ahead.note).not.toContain('就是最新');
+
+  const equal = panel.evaluateUpdate(baseState({ updates: { ...base, currentVersion: '0.8.0' } }));
+  expect(equal.ahead).toBe(false);
+  expect(equal.word).toBe('已是最新');
+
+  // 一个版本无法比较时保持原措辞，不猜大小。
+  const incomparable = panel.evaluateUpdate(baseState({ updates: { ...base, currentVersion: 'dev' } }));
+  expect(incomparable.ahead).toBe(false);
+  expect(incomparable.word).toBe('已是最新');
+
+  expect(panel.versionOrder('0.9.0', '0.8.0')).toBe(1);
+  expect(panel.versionOrder('v0.8.0', '0.8.0')).toBe(0);
+  expect(panel.versionOrder('0.10.0', '0.9.0')).toBe(1);
+  expect(panel.versionOrder('0.9', '0.8.0')).toBeNull();
+});
+
+test('the update hint names the version facts instead of claiming newest when local is ahead', () => {
+  const panel = ui();
+  panel.state.data = baseState({ updates: { state: 'current', currentVersion: '0.9.0',
+    latestVersion: '0.8.0', pendingVersion: null, rollbackVersion: null } });
+  panel.setView('connection');
+  panel.renderConnection();
+  const verdict = panel.nodes.get('upd-verdict-word').textContent;
+  expect(verdict).toBe('无需更新');
+});

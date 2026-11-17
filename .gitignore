@@ -1,0 +1,11 @@
+node_modules/
+runtime/
+dist/
+.test-artifacts*
+.env*
+*.log
+portable-data/
+credentials.json
+gateway.json
+panel-entry.json
+.DS_Store

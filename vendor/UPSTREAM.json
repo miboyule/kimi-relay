@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/wssz527/kimi-work-gateway",
+  "commit": "934438a457c46b0249b6d317a01db86431ed7aa4",
+  "version": "0.9.0",
+  "license": "MIT",
+  "importedAt": "2026-11-17",
+  "changes": "None. Desktop integration and permission guards are maintained in ../../src."
+}
