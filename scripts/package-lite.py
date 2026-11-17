@@ -1,6 +1,5 @@
 """Allowlisted Lite payload; ZIPs never collect local credentials or node_modules."""
 import json
-import os
 import pathlib
 import shutil
 import stat
@@ -22,7 +21,11 @@ def archive(source, target, runtime_included):
         for file in sorted(source.rglob('*')):
             relative = file.relative_to(source).as_posix()
             if file.is_file() and (runtime_included or not relative.startswith('runtime/')):
-                bundle.write(file, relative)
+                entry = zipfile.ZipInfo.from_file(file, relative)
+                executable = relative.endswith('.command') or relative.endswith('/MacOS/launch') or relative == 'runtime/node'
+                entry.create_system = 3
+                entry.external_attr = (stat.S_IFREG | (0o755 if executable else 0o644)) << 16
+                bundle.writestr(entry, file.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
     limit = 50_000_000 if runtime_included else 2_000_000
     if target.stat().st_size >= limit:
         raise RuntimeError(f'{target.name} exceeds size budget {limit}')
@@ -94,13 +97,3 @@ If result <> 0 Then MsgBox "Kimi Relay Lite failed to start. Please extract the 
         shutil.rmtree(unpacked)
     shutil.copytree(stage, unpacked)
 
-# Make executable metadata deterministic across packaging hosts.
-for archive_file in [patch, DIST / (name + '.zip')]:
-    rewrite = archive_file.with_suffix('.tmp')
-    with zipfile.ZipFile(archive_file) as source, zipfile.ZipFile(rewrite, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as target:
-        for entry in source.infolist():
-            executable = entry.filename.endswith('.command') or entry.filename.endswith('/MacOS/launch') or entry.filename == 'runtime/node'
-            entry.create_system = 3
-            entry.external_attr = (stat.S_IFREG | (0o755 if executable else 0o644)) << 16
-            target.writestr(entry, source.read(entry.filename))
-    os.replace(rewrite, archive_file)
