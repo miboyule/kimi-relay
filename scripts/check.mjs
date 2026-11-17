@@ -1,12 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-const directories = ['src', 'scripts', 'test'];
+const directories = ['src', 'scripts', 'test', 'ui'];
 function* walk(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const name = path.join(directory, entry.name);
     if (entry.isDirectory()) yield* walk(name);
-    else if (/\.(mjs|cjs)$/.test(name)) yield name;
+    else if (/\.(mjs|cjs|js)$/.test(name)) yield name;
   }
 }
 for (const directory of directories) for (const file of walk(directory)) {

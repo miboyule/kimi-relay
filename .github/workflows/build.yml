@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 jobs:
-  desktop:
+  lite:
     strategy:
       fail-fast: false
       matrix:
@@ -26,30 +26,31 @@ jobs:
         with:
           node-version: '24.22.3'
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
       - run: npm audit --omit=dev --audit-level=high
-      - name: Build native desktop archive
-        run: npm run build -- --${{ runner.os == 'Windows' && 'win' || 'mac' }} zip --${{ matrix.arch }}
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - name: Smoke-test packaged desktop
-        run: npm run smoke
-        env:
-          RELAY_ARCH: ${{ matrix.arch }}
+      - name: Build Lite archives (full under 50 MB, code-only under 2 MB)
+        run: npm run build:lite
+      - name: Install isolated test browser (not included in release)
+        run: npx playwright install chromium
+      - name: Smoke-test delivered Lite launchers and browser lifecycle
+        run: npm run smoke:lite
+      - name: Publish universal code-only archive from Windows job only
+        if: runner.os != 'Windows'
+        run: python -c "import pathlib; [p.unlink() for p in pathlib.Path('dist').glob('*code-only.zip')]"
       - name: Create checksums
         run: node scripts/checksums.mjs
       - uses: actions/upload-artifact@v7
         with:
-          name: Kimi-Relay-${{ runner.os }}-${{ matrix.arch }}
+          name: Kimi-Relay-Lite-${{ runner.os }}-${{ matrix.arch }}
           path: |
             dist/*.zip
             dist/SHA256SUMS-*
           if-no-files-found: error
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: desktop
+    needs: lite
     runs-on: ubuntu-latest
     permissions:
       contents: write
