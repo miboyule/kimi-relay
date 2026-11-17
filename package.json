@@ -1,6 +1,6 @@
 {
   "name": "kimi-relay",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Portable desktop companion for bringing your own models to Kimi Work",
   "private": true,
   "main": "src/main.cjs",
@@ -16,9 +16,9 @@
     "test": "node --test test/*.test.mjs",
     "check": "node scripts/check.mjs",
     "runtime": "node scripts/runtime.mjs",
-    "build": "npm run runtime && electron-builder",
-    "build:win": "npm run runtime && electron-builder --win zip",
-    "build:mac": "npm run runtime && electron-builder --mac zip",
+    "build": "npm run runtime && electron-builder --publish never",
+    "build:win": "npm run runtime && electron-builder --publish never --win zip",
+    "build:mac": "npm run runtime && electron-builder --publish never --mac zip",
     "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {

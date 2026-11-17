@@ -34,7 +34,6 @@ jobs:
         run: npm run build -- --${{ runner.os == 'Windows' && 'win' || 'mac' }} zip --${{ matrix.arch }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          GH_TOKEN: ${{ github.token }}
       - name: Smoke-test packaged desktop
         run: npm run smoke
         env:
