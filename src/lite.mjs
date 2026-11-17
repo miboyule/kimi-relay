@@ -54,6 +54,7 @@ async function stopWorker() {
 }
 async function startWorker(setup = false) {
   await stopWorker();
+  if (stopping) return;
   snapshot = { mode: 'starting', url: null, error: null };
   child = fork(path.join(project, 'src/worker.mjs'), ['--state-dir', directory, ...(setup ? ['--setup'] : []),
     ...(flags.includes('--smoke') ? ['--no-native', '--kimi-dir', path.join(directory, 'test-kimi')] : [])], {
@@ -87,6 +88,7 @@ async function stop() {
 }
 async function action(name) {
   if (name === 'stop') return stop();
+  if (stopping) throw Error('lite_stopping');
   if (name === 'restart' || name === 'setup') return startWorker(name === 'setup');
   if (name === 'data') return open(directory, true);
   if (name === 'remove-dns') await execute(process.execPath,

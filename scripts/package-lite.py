@@ -96,4 +96,3 @@ If result <> 0 Then MsgBox "Kimi Relay Lite failed to start. Please extract the 
             raise RuntimeError('invalid_cleanup_path')
         shutil.rmtree(unpacked)
     shutil.copytree(stage, unpacked)
-
