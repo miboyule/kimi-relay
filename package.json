@@ -1,0 +1,91 @@
+{
+  "name": "kimi-relay",
+  "version": "0.1.0-beta.1",
+  "description": "Portable desktop companion for bringing your own models to Kimi Work",
+  "private": true,
+  "main": "src/main.cjs",
+  "author": "Kimi Relay contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/miboyule/kimi-relay.git"
+  },
+  "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "start": "electron .",
+    "test": "node --test test/*.test.mjs",
+    "check": "node scripts/check.mjs",
+    "runtime": "node scripts/runtime.mjs",
+    "build": "npm run runtime && electron-builder",
+    "build:win": "npm run runtime && electron-builder --win zip",
+    "build:mac": "npm run runtime && electron-builder --mac zip",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.3.3",
+    "electron-builder": "26.18.0",
+    "playwright": "1.65.1"
+  },
+  "build": {
+    "appId": "org.kimirelay.desktop",
+    "productName": "Kimi Relay",
+    "asar": true,
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/main.cjs",
+      "src/desktop.cjs",
+      "assets/**",
+      "package.json",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime",
+        "to": "runtime"
+      },
+      {
+        "from": "src",
+        "to": "relay",
+        "filter": [
+          "**/*.mjs"
+        ]
+      },
+      {
+        "from": "ui",
+        "to": "relay/ui"
+      },
+      {
+        "from": "vendor/kimi-work-gateway",
+        "to": "core",
+        "filter": [
+          "src/**",
+          "ui/**",
+          "bin/**",
+          "cli.mjs",
+          "package.json",
+          "LICENSE"
+        ]
+      }
+    ],
+    "artifactName": "Kimi-Relay-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        "zip"
+      ],
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": [
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "icon": "assets/icon.png"
+    }
+  }
+}

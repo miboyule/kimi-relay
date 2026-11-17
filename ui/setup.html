@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kimi Relay · 连接你的模型</title>
+<style nonce="__SETUP_NONCE__">
+:root{color-scheme:light;--bg:#f4f3ef;--ink:#232e2d;--muted:#66716d;--line:#d9ddd6;--green:#245e4e;--focus:#357c68;font-family:system-ui,"Microsoft YaHei",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.65}main{max-width:1020px;margin:40px auto;padding:0 32px;display:grid;grid-template-columns:260px 1fr;gap:56px}.brand{font-size:19px;font-weight:700;letter-spacing:-.5px;display:flex;gap:12px;align-items:center}.mark{width:36px;height:36px;background:var(--green);color:white;display:grid;place-items:center;border-radius:8px;font-size:23px}aside{padding-top:12px}h1{font-size:32px;line-height:1.3;letter-spacing:-1px;margin:48px 0 16px}aside p{color:var(--muted)}.steps{margin-top:48px;padding:0;list-style:none}.steps li{padding:12px 0;border-bottom:1px solid var(--line)}.steps span{color:var(--green);font-weight:700;margin-right:12px}.badge{display:inline-block;border:1px solid var(--line);border-radius:4px;padding:3px 8px;font-size:12px;color:var(--muted);margin-top:24px}article{background:#fff;border:1px solid var(--line);border-radius:12px;padding:32px}h2{font-size:22px;margin:0 0 5px}p{margin:0 0 20px}.muted,small{color:var(--muted)}label{display:block;font-weight:600;margin:20px 0 7px}input,textarea,select{width:100%;border:1px solid #bfc8bf;border-radius:6px;padding:11px 12px;color:var(--ink);background:white;font:inherit}textarea{resize:vertical;min-height:100px;font-family:ui-monospace,monospace}input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid #a5cbbb;outline-offset:2px}.row{display:grid;grid-template-columns:1fr 1fr;gap:20px}.check{font-weight:400;display:flex;gap:9px;align-items:flex-start;margin:12px 0}.check input{width:16px;min-width:16px;margin:5px 0 0;accent-color:var(--green)}details{border-top:1px solid var(--line);margin-top:24px;padding-top:16px}summary{cursor:pointer;color:var(--muted)}button{border:0;border-radius:6px;padding:12px 20px;font:600 14px system-ui;background:var(--green);color:white;width:100%;cursor:pointer;margin-top:24px}button:disabled{opacity:.55;cursor:wait}#status{white-space:pre-wrap;margin-top:14px;font-size:13px}#status[data-error=true]{color:#a2352c}footer{grid-column:1/-1;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding:16px 0}code{font-size:12px}small{display:block;margin-top:5px}.saved{background:#edf4ee;padding:10px 12px;border-radius:5px;margin:16px 0;font-size:13px}@media(max-width:760px){main{grid-template-columns:1fr;gap:24px;margin:24px auto;padding:0 20px}aside h1{margin:24px 0 10px;font-size:26px}.steps,.badge{display:none}article{padding:24px}.row{grid-template-columns:1fr;gap:0}}
+</style>
+</head>
+<body>
+<main>
+<aside>
+  <div class="brand"><div class="mark" aria-hidden="true">⇄</div>Kimi Relay</div>
+  <h1>熟悉的工作台，<br>自己的模型。</h1>
+  <p>把你的模型供应商接入 Kimi Work，继续使用原来的工作流。</p>
+  <ol class="steps"><li><span>01</span>填写供应商</li><li><span>02</span>添加模型</li><li><span>03</span>在 Kimi 中选择</li></ol>
+  <div class="badge">0.1 预览版 · 本机运行</div>
+</aside>
+<article>
+  <h2>连接你的模型</h2>
+  <p class="muted">支持 OpenAI 兼容接口。保存后进入模型控制面板。</p>
+  <div id="existing" class="saved" hidden>已找到保存的连接。API Key 留空即可保留原值。</div>
+  <form id="form">
+    <label for="name">连接名称</label><input id="name" required maxlength="128" value="我的模型供应商" autocomplete="off">
+    <label for="url">API 地址 · Base URL</label><input id="url" type="url" required placeholder="https://api.example.com/v1" spellcheck="false" autocomplete="off">
+    <small>填写到 /v1 等接口前缀；本地服务可以使用 HTTP。</small>
+    <label for="key">API Key</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="仅保存在本机，不回显">
+    <label for="models">模型 ID</label><textarea id="models" required spellcheck="false" placeholder="deepseek-chat&#10;deepseek-reasoner"></textarea>
+    <small>每行一个真实模型 ID。模型名称无需改成 kimi 开头，程序会处理本地别名。</small>
+    <div class="row">
+      <div><label for="protocol">接口协议</label><select id="protocol"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select></div>
+      <div><label for="context">上下文预算 · tokens</label><input id="context" type="number" min="1024" max="10000000" step="1" value="32768" required></div>
+    </div>
+    <label class="check"><input id="tools" type="checkbox" checked><span>模型支持工具调用（Work 执行任务需要）</span></label>
+    <details><summary>更多连接选项</summary>
+      <label class="check"><input id="image" type="checkbox"><span>模型支持图片输入</span></label>
+      <label class="check"><input id="reasoning" type="checkbox"><span>模型支持推理能力</span></label>
+      <label for="port">本机网关端口</label><input id="port" type="number" min="1024" max="65535" value="3426" required>
+      <label class="check"><input id="dns" type="checkbox"><span>允许配置 Kimi 所需的单域名解析<br><small>部分安装需要此选项。Windows 添加一组带标记的 hosts 条目；macOS 添加单域名 resolver。执行时由系统请求管理员授权，可在应用菜单撤销。</small></span></label>
+    </details>
+    <button id="save" type="submit">保存并打开控制面板 →</button>
+    <div id="status" role="status" aria-live="polite"></div>
+  </form>
+</article>
+<footer>独立开源项目 · 基于 Kimi Work Gateway（MIT） · 不修改 Kimi 安装包 · 不自动添加开机启动</footer>
+</main>
+<script nonce="__SETUP_NONCE__">
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const params = new URLSearchParams(location.hash.slice(1));
+  let token = params.get('key') || sessionStorage.getItem('relay-setup-session');
+  if (token) sessionStorage.setItem('relay-setup-session', token);
+  history.replaceState(null, '', location.pathname);
+  let connectionId = 'relay';
+  let previousModels = [];
+  const messages = { invalid_api_key:'请填写 API Key。', invalid_base_url:'请检查 API 地址。远程地址需要 HTTPS，且不能包含密钥或查询参数。', invalid_models:'请检查模型 ID 和上下文预算。', invalid_port:'端口需在 1024–65535 之间。', setup_config_conflict:'配置文件已存在且归属不符，已保留原文件。', setup_credentials_conflict:'凭据文件归属不符，已保留原文件。', unauthorized:'会话已失效，请从应用菜单重新打开首次设置。', setup_failed:'保存失败，请检查数据目录是否可写。' };
+  const say = (text, error=false) => { $('status').textContent=text; $('status').dataset.error=String(error); };
+  async function api(route, body) {
+    const response = await fetch(route, { method:body ? 'POST':'GET', headers:{ authorization:'Bearer '+token, ...(body ? {'content-type':'application/json'}:{}) }, ...(body ? {body:JSON.stringify(body)}:{}) });
+    const data = await response.json();
+    if (!response.ok) throw Error(messages[data.error?.code] || '操作未完成：'+(data.error?.code || response.status));
+    return data;
+  }
+  $('form').addEventListener('submit', async event => {
+    event.preventDefault();
+    $('save').disabled=true;
+    say('正在保存本机连接…');
+    try {
+      const protocol=$('protocol').value;
+      const ids=[...new Set($('models').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))];
+      const models=ids.map(id=>{
+        const old=previousModels.find(row=>(row.upstreamModelId || row.id)===id);
+        return { ...(old || {}), id:connectionId+'/'+(protocol==='chat'?'kimi-':'resp-')+encodeURIComponent(id), name:old?.name || id, upstreamModelId:id, connectionId, protocol, contextWindow:Number($('context').value), tools:$('tools').checked, reasoning:$('reasoning').checked, inputModalities:$('image').checked?['text','image']:['text'] };
+      });
+      const key=$('key').value.trim();
+      const connection={id:connectionId,name:$('name').value.trim(),baseURL:$('url').value.trim(),...(key?{apiKey:key}:{})};
+      const payload={connections:[connection],models,port:Number($('port').value),dns:$('dns').checked,installService:false};
+      await api('/api/save',payload);
+      $('key').value='';
+      say('已保存。正在启动网关，稍后自动打开控制面板…');
+    } catch(error) { say(error.message,true); }
+    finally { $('save').disabled=false; }
+  });
+  api('/api/state').then(({state})=>{
+    if (!state.configured) return;
+    $('existing').hidden=false;
+    const connection=state.connections[0];
+    if (state.connections.length>1 || new Set(state.models.map(x=>x.protocol)).size>1) {
+      $('save').disabled=true;
+      say('当前已有多连接或混合协议配置，请从应用菜单打开控制面板维护。首次设置页不会覆盖这类配置。');
+      return;
+    }
+    previousModels=state.models;
+    if(connection){connectionId=connection.id;$('name').value=connection.name;$('url').value=connection.baseURL;}
+    $('models').value=state.models.map(x=>x.upstreamModelId || x.id).join('\n');
+    const first=state.models[0];
+    if(first){$('protocol').value=first.protocol;$('context').value=first.contextWindow;$('tools').checked=first.tools===true;$('reasoning').checked=first.reasoning===true;$('image').checked=first.inputModalities?.includes('image')===true;}
+    $('port').value=state.port;
+    $('dns').checked=state.dns?.enabled===true;
+  }).catch(error=>say(error.message,true));
+})();
+</script>
+</body>
+</html>
