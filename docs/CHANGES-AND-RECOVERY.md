@@ -2,9 +2,11 @@
 
 ## 中文
 
+**beta.3 新增 Lite 轻量版。** 移除随包 Electron，改为系统浏览器＋Node 本机网关；Kimi 接入方式不变。发行文件为 `app/`、`runtime/`、启动文件和 `VERSION.json`。新增数据目录内的 `lite-entry.json` 与 `lite.lock`，只用于管理会话与单实例控制，正常停止时清理。管理页按钮替代下文提到的旧桌面版菜单；“停止并退出”替代托盘退出。代码更新包只覆盖程序文件，配置、Key 和备份不在包内。更新与回退步骤见 [Lite 说明](LITE.md)。
+
 本项目对上游 Kimi Work Gateway 0.9.0 的核心源码保持原样，二开内容位于 `src/`、`ui/`、`scripts/` 与 `.github/`。`vendor/UPSTREAM.json` 固定来源提交。新增桌面托盘壳、独立 Node 运行时、简化首设、默认权限守卫、系统 hosts 一致性检查、自动备份、狭义旧代理迁移以及双平台发布检查。
 
-桌面适配层还将面板名称改为 Kimi Relay，并关闭上游 CLI 的独立核心更新入口，防止只更新核心而使桌面包版本不一致。完整桌面版本从应用菜单跳转至本项目 Releases 下载。面板的“准备原生设置”也受单域名解析开关约束。
+桌面适配层还将面板名称改为 Kimi Relay，并关闭上游 CLI 的独立核心更新入口，防止只更新核心而使桌面包版本不一致。发行版本从说明与更新跳转至本项目 Releases 下载；Lite 支持只替换程序文件。面板的“准备原生设置”也受单域名解析开关约束。
 
 ### 文件变更范围
 
@@ -38,6 +40,8 @@ Relay 在启用原生接入前，备份当时存在的 Kimi 主配置、原生�
 迁移器只导入 Relay 自身目录，不会停用旧脚本、停止旧进程或删除开机项。旧脚本若仍每隔一段时间覆盖配置，会与新接入互相覆盖；应先结束旧脚本，再使用新接入。
 
 ## English
+
+**beta.3 adds Lite.** It removes bundled Electron and uses the default browser plus the existing Node gateway. Delivered files are `app/`, `runtime/`, launchers and `VERSION.json`. Private state adds `lite-entry.json` and `lite.lock` for the authenticated manager and single-instance lock; normal shutdown removes them. Manager buttons replace the desktop menus below, and Stop and exit replaces tray quit. Code-only updates contain application files, never credentials or backups. See [Lite](LITE.md) for update and rollback steps.
 
 The upstream core is preserved under `vendor/kimi-work-gateway/` at the commit recorded in `vendor/UPSTREAM.json`. Our additions are the desktop tray application, bundled Node runtime, simplified setup, explicit permission guard, OS-consistent Windows resolution check, verified backups, narrow legacy migration and platform build checks.
 

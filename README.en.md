@@ -4,17 +4,19 @@
 
 Bring your own third-party model provider to Kimi Work. **A top-up at an API relay funds that relay's API balance. It does not add official Kimi credits.**
 
-This desktop derivative uses [Kimi Work Gateway](https://github.com/wssz527/kimi-work-gateway) under MIT. It reuses the native model import, gateway and control panel, adding a bundled runtime, first-run setup, tray lifecycle, backups and legacy migration. Upstream source, revision and copyright are preserved under `vendor/`. This project is independent of Kimi / Moonshot.
+This desktop derivative uses [Kimi Work Gateway](https://github.com/wssz527/kimi-work-gateway) under MIT. It reuses the native model import, gateway and control panel, adding a bundled runtime, first-run setup, lifecycle controls, backups and legacy migration. Upstream source, revision and copyright are preserved under `vendor/`. This project is independent of Kimi / Moonshot.
+
+**Recommended: Lite.** Uses your default browser instead of bundling Electron. Full archives are under 50 MB; subsequent updates can replace Relay application files using a roughly 0.51 MB code-only ZIP. Historical Electron builds remain available. See [Lite usage and file replacement](docs/LITE.md).
 
 ## Quick start
 
-1. Download the ZIP for your system and extract the entire archive. On Windows, open `Kimi Relay.exe`. On macOS, move `Kimi Relay.app` to Applications and open it. Node/npm installation is not required.
+1. Download the ZIP for your system and extract the entire archive. On Windows, open `Start Kimi Relay.vbs` (or `.cmd`). On macOS, open `Kimi Relay Lite.app` (or `.command`), keeping the entire extracted folder together. Do not move only the small `.app` launcher. Your default browser opens the manager. Node/npm installation is not required.
 2. Enter your provider's Base URL, API key and real model IDs. Select Chat Completions or Responses. Declare only capabilities the provider supports. Setup starts with a conservative 32K token context budget.
-3. Finish the native connection in the control panel, then select the imported model in Kimi Work. Keep Relay running. Closing its window hides it to the tray; the Quit menu stops its gateway.
+3. Finish the native connection in the control panel, then select the imported model in Kimi Work. Keep Relay running. Closing browser tabs leaves the gateway running; Stop and exit in the manager stops it. Launch again to reopen the manager.
 
-If native onboarding requires domain resolution, open First setup / Edit connection from the application menu, expand the advanced options and explicitly enable it. Windows adds one marked hosts pair; macOS adds a domain-specific resolver. The OS requests administrator authorization. This option is off by default.
+If native onboarding requires domain resolution, open Edit connection from the manager (old Electron edition: application menu), expand the advanced options and explicitly enable it. Windows adds one marked hosts pair; macOS adds a domain-specific resolver. The OS requests administrator authorization. This option is off by default.
 
-After changing a connection or API key, use the application's Restart gateway menu instead of the upstream terminal instructions. Finish running Work tasks before restarting.
+After changing a connection or API key, use the manager’s Restart gateway button instead of the upstream terminal instructions. Finish running Work tasks before restarting.
 
 ## Scope
 
@@ -30,9 +32,9 @@ Preview builds currently have no publisher signing or Apple notarization configu
 
 ## Data and portability
 
-Use Open data directory in the application menu to locate the actual state folder. Typical locations are `%APPDATA%/Kimi Relay/gateway` on Windows and `~/Library/Application Support/Kimi Relay/gateway` on macOS.
+Use Open data directory under More options in the manager to locate the actual state folder. Typical locations are `%APPDATA%/Kimi Relay/gateway` on Windows and `~/Library/Application Support/Kimi Relay/gateway` on macOS.
 
-A `portable-mode` marker beside the Windows executable puts gateway data in adjacent `portable-data/`; desktop cache still uses the system user-data folder. `KIMI_RELAY_HOME` selects a separate directory for both gateway data and desktop cache. Kimi's own data remains in its existing location.
+**Lite uses `KIMI_RELAY_HOME` for an alternate data folder and reuses desktop state by default. See the Lite guide for updates and runtime reuse.** The following marker applies only to the older Electron edition: a `portable-mode` marker beside the Windows executable puts gateway data in adjacent `portable-data/`; desktop cache still uses the system user-data folder. `KIMI_RELAY_HOME` selects a separate directory for both gateway data and desktop cache. Kimi's own data remains in its existing location.
 
 Credentials are stored separately and are readable by the current OS user; additional keychain encryption is not implemented. Do not share credentials, backup folders or panel links containing session fragments.
 
@@ -55,9 +57,11 @@ npm run check
 npm test
 npm run runtime
 npm start
-npm run build:win
+npm run build:lite
+npm run smoke:lite
+npm run build:win  # Optional legacy Electron edition
 npm run build:mac
 npm run smoke
 ```
 
-Node is downloaded from a pinned official release and checked against official SHA256 checksums. Tag builds produce platform ZIPs and checksums as prereleases. See the [roadmap](docs/ROADMAP.md). MIT; retain this project's and upstream licenses in derivative distributions.
+Node is downloaded from a pinned official release and checked against official SHA256 checksums. Tag builds produce Lite platform ZIPs (hard limit: 50,000,000 bytes), a universal code-only update (under 2,000,000 bytes) and checksums as prereleases. See the [roadmap](docs/ROADMAP.md). MIT; retain this project's and upstream licenses in derivative distributions.
