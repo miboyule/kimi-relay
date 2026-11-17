@@ -67,7 +67,7 @@ End If
 result = sh.Run(Chr(34) & node & Chr(34) & " " & Chr(34) & entry & Chr(34) & " --detach", 0, True)
 If result <> 0 Then MsgBox "Kimi Relay Lite failed to start. Please extract the complete package.", 48, "Kimi Relay Lite"
 ''', encoding='ascii', newline='\r\n')
-    (stage / 'Start Kimi Relay.cmd').write_text('@echo off\r\n"%~dp0runtime\\node.exe" "%~dp0app\\src\\lite.mjs" --detach\r\n', encoding='ascii')
+    (stage / 'Start Kimi Relay.cmd').write_text('@echo off\n"%~dp0runtime\\node.exe" "%~dp0app\\src\\lite.mjs" --detach\n', encoding='ascii', newline='\r\n')
     command = stage / 'Start Kimi Relay.command'
     command.write_text('#!/bin/sh\nset -eu\ncd -- "$(dirname -- "$0")"\nexec ./runtime/node ./app/src/lite.mjs --detach\n', encoding='utf-8')
     command.chmod(0o755)

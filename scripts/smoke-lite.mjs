@@ -97,8 +97,22 @@ try {
   await waitFor(async () => (await (await api('status')).json()).mode === 'panel', 'restart');
   assert.deepEqual(await fs.readFile(credentialsFile), credentials);
   assert.deepEqual(errors, []);
+  // Reproduce a late status response arriving after Stop. It must not replace
+  // the final success message with a spurious connection error.
+  let heldRoute, reportHeld;
+  const held = new Promise(resolve => { reportHeld = resolve; });
+  await manager.route('**/api/status', async route => {
+    if (heldRoute) await route.continue();
+    else { heldRoute = route; reportHeld(); }
+  });
+  await manager.evaluate(() => { window.pendingStatus = refresh(); });
+  await held;
   await manager.locator('[data-action="stop"]').click();
   await manager.getByText('网关已停止', { exact: true }).waitFor();
+  await heldRoute.abort();
+  await manager.evaluate(() => window.pendingStatus);
+  assert.equal(await manager.locator('#status').textContent(), '网关已停止');
+  await manager.unroute('**/api/status');
   await waitFor(async () => { try { await fs.access(path.join(state, 'lite.lock')); return false; } catch { return true; } }, 'shutdown');
   await assert.rejects(fetch(`http://127.0.0.1:${port}/v1/models`));
   // A code-only overlay must never contain runtime or persistent state.

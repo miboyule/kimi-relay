@@ -19,10 +19,11 @@ async function refresh() {
   if (stopped) return;
   try {
     const state = await api('status');
+    if (stopped) return;
     statusLine.textContent = state.error ? '启动失败：' + state.error : ({ panel: '网关运行中', setup: '等待填写供应商', starting: '网关正在启动…', stopped: '网关已停止' }[state.mode] || '正在连接…');
     panel.hidden = !trustedURL(state.url);
     if (!panel.hidden) { panel.href = state.url; panel.textContent = state.mode === 'setup' ? '填写供应商，开始接入 ↗' : '打开控制面板 ↗'; }
-  } catch (error) { statusLine.textContent = error.message.includes('会话') ? error.message : '网关已停止或连接中断，请重新打开软件。'; panel.hidden = true; }
+  } catch (error) { if (stopped) return; statusLine.textContent = error.message.includes('会话') ? error.message : '网关已停止或连接中断，请重新打开软件。'; panel.hidden = true; }
 }
 for (const button of document.querySelectorAll('[data-action]')) button.addEventListener('click', async () => {
   const action = button.dataset.action;
