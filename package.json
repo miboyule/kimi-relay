@@ -1,6 +1,6 @@
 {
   "name": "kimi-relay",
-  "version": "0.1.0-beta.4",
+  "version": "0.1.0-beta.5",
   "description": "Portable desktop companion for bringing your own models to Kimi Work",
   "private": true,
   "main": "src/main.cjs",

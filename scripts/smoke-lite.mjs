@@ -95,6 +95,9 @@ try {
   manager.on('dialog', dialog => dialog.accept());
   await manager.locator('[data-action="restart"]').click();
   await waitFor(async () => (await (await api('status')).json()).mode === 'panel', 'restart');
+  // The browser finishes its own post-restart status read before controls are
+  // enabled. Do not intercept that read while preparing the late-poll scenario.
+  await manager.waitForFunction(() => !document.querySelector('[data-action="stop"]').disabled);
   assert.deepEqual(await fs.readFile(credentialsFile), credentials);
   assert.deepEqual(errors, []);
   // Reproduce a late status response arriving after Stop. It must not replace
