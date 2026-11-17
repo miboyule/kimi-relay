@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadCore } from './core.mjs';
 import { createGuardedOnboarding } from './policy.mjs';
 import { backupFiles, kimiBackupFiles } from './migration.mjs';
+import { RelayPanelController, RelayPanel } from './panel.mjs';
 
 const args = process.argv.slice(2);
 const option = name => args[args.indexOf(name) + 1];
@@ -54,7 +55,7 @@ async function startPanel() {
     '--state-dir', stateDir, '--entry-file', entryFile, '--ui-port', '0',
     ...(kimiDir ? ['--kimi-dir', kimiDir] : []), ...(noNative ? ['--no-native'] : [])], process.env,
   { out: () => {}, err: line => { if (noNative) process.stderr.write(line + '\n'); } }, {
-    waitForShutdown: () => shutdown,
+    waitForShutdown: () => shutdown, PanelController: RelayPanelController, GatewayPanel: RelayPanel,
     ...(factory ? { createNativeConnection: factory } : {}),
     ...(noNative ? { contextPolicy: false, mcpManager: false } : {}),
   }).then(code => { lastCode = code; return code; }).catch(() => { lastCode = 3; return 3; });
@@ -84,7 +85,7 @@ async function startSetup() {
     // Back up our own previous settings before an authenticated form can save.
     const existing = [configFile, path.join(stateDir, 'credentials.json'), path.join(stateDir, 'setup-receipt.json')];
     if (existing.some(file => fs.existsSync(file))) backupFiles(existing, path.join(stateDir, 'backups'));
-    return save({ ...input, installService: false });
+    return save({ ...input, dns: input.dns === true, installService: false });
   };
   send({ event: 'ready', mode: 'setup', url: await setup.start() });
 }

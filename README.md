@@ -6,6 +6,8 @@
 
 基于 [Kimi Work Gateway](https://github.com/wssz527/kimi-work-gateway)（MIT）的桌面二次开发。复用其网关、原生模型导入和面板，增加随包运行环境、首次设置、托盘、备份和旧配置迁移。上游版本与版权完整保留在 [vendor/UPSTREAM.json](vendor/UPSTREAM.json) 和 [第三方声明](THIRD_PARTY_NOTICES.md)。与 Kimi / Moonshot 官方无隶属关系。
 
+![首次设置](docs/images/first-run.png)
+
 ## 三步使用
 
 1. 从 Releases 下载对应系统的 zip，解压整个文件夹。Windows 双击 `Kimi Relay.exe`；macOS 将 `Kimi Relay.app` 移到“应用程序”后打开。无需安装 Node.js、npm 或修改脚本执行策略。

@@ -68,13 +68,25 @@ test('isolated setup, real chat + SSE + Responses forwarding, authentication and
   const ready = wait(child, message => message.event === 'ready' && message.mode === 'panel');
   const result = await fetch(origin + '/api/save', { method: 'POST', headers,
     body: JSON.stringify({ connections: [{ id: 'relay', name: 'Synthetic', baseURL: `http://127.0.0.1:${upstream.address().port}/v1`, apiKey: 'synthetic-upstream-key' }],
-      port, dns: false, installService: false, models: [
+      port, installService: true, models: [
         { id: 'relay/kimi-deepseek-chat', name: 'Test Chat', upstreamModelId: 'deepseek-chat', connectionId: 'relay', protocol: 'chat', contextWindow: 32768, tools: true },
         { id: 'relay/resp-gpt-test', upstreamModelId: 'gpt-test', connectionId: 'relay', protocol: 'responses', contextWindow: 32768 },
       ] }) });
-  assert.equal(result.status, 200, await result.text());
+  const saved = await result.json();
+  assert.equal(result.status, 200, JSON.stringify(saved));
+  assert.equal(saved.state.dns.enabled, false);
+  assert.equal(saved.service, null);
   const panel = await ready.catch(error => { throw Error(error.message + ': ' + output); });
   assert.equal(panel.mode, 'panel');
+  const panelURL = new URL(panel.url);
+  const panelKey = new URLSearchParams(panelURL.hash.slice(1)).get('key');
+  for (const action of ['prepare-native', 'install-update']) {
+    const denied = await fetch(panelURL.origin + '/api/actions', { method: 'POST',
+      headers: { authorization: 'Bearer ' + panelKey, origin: panelURL.origin, 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'synthetic-action-' + action, at: Date.now(), action }) });
+    assert.equal(denied.status, 409);
+  }
+  assert.match(await (await fetch(panelURL.origin)).text(), /Kimi Relay/);
   const credentials = JSON.parse(await fs.readFile(path.join(directory, 'credentials.json'), 'utf8'));
   const gateway = `http://127.0.0.1:${port}/v1`;
   assert.equal((await fetch(gateway + '/models')).status, 401);
@@ -103,4 +115,43 @@ test('isolated setup, real chat + SSE + Responses forwarding, authentication and
   child.send({ action: 'stop' });
   assert.equal((await exited)[0], 0, output);
   assert.equal(await fs.access(path.join(directory, 'panel-entry.json')).then(() => true, () => false), false);
+});
+
+test('losing the desktop IPC connection shuts down its owned worker', { timeout: 15000 }, async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'relay-owner-test-'));
+  const child = fork(path.join(root, 'src/worker.mjs'), ['--state-dir', directory, '--no-native'],
+    { stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  try {
+    await wait(child, message => message.event === 'ready');
+    const exited = once(child, 'exit');
+    child.disconnect();
+    assert.equal((await exited)[0], 0);
+  } finally {
+    if (child.exitCode === null) child.kill();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('an occupied gateway port is reported as failure, not ready', { timeout: 15000 }, async () => {
+  const { saveSetup, setupPaths } = await import('../vendor/kimi-work-gateway/src/setup.mjs');
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'relay-port-test-'));
+  const blocker = http.createServer().listen(0, '127.0.0.1');
+  await once(blocker, 'listening');
+  saveSetup({ paths: setupPaths({ stateDir: directory }), apiKey: 'synthetic-port-key',
+    config: { upstream: { baseURL: 'https://example.invalid/v1', apiKeyEnv: 'KIMI_WORK_UPSTREAM_KEY' },
+      port: blocker.address().port, tokenEnv: 'KIMI_WORK_GATEWAY_TOKEN', dns: { enabled: false, port: 53535 },
+      models: [{ id: 'kimi-test', protocol: 'chat', contextWindow: 32768 }] } });
+  const child = fork(path.join(root, 'src/worker.mjs'), ['--state-dir', directory, '--kimi-dir', path.join(directory, 'kimi'), '--no-native'],
+    { stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  try {
+    await assert.rejects(wait(child, message => message.event === 'ready'), /gateway_start_failed/);
+    const exited = once(child, 'exit');
+    child.send({ action: 'stop' });
+    assert.equal((await exited)[0], 0);
+    assert.equal(await fs.access(path.join(directory, 'panel-entry.json')).then(() => true, () => false), false);
+  } finally {
+    if (child.exitCode === null) child.kill();
+    await new Promise(resolve => blocker.close(resolve));
+    await fs.rm(directory, { recursive: true, force: true });
+  }
 });
