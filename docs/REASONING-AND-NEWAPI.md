@@ -4,7 +4,7 @@
 
 `Supported efforts: off` 描述 Kimi 收到的本地能力声明，不能据此判断供应商模型没有推理能力。迁移时为避免推测模型能力，使用了 `reasoning: false`，导致 Kimi 将模型视为仅支持 `off`。
 
-设置入口：Lite 管理页 → 打开控制面板 → 模型目录 → 编辑模型。在“声明能力”中勾选“支持思考档位”，填写 `low, high, max`，默认档位选择 `high`，点击“保存目录”。模型能力需要同步到 Kimi；仅改全局档位而不更新模型声明，会再次触发校验错误。首次设置页的推理复选框不提供完整分档，应在控制面板维护档位。
+设置入口：Lite 管理页 → 打开控制面板 → 模型目录 → 编辑模型。在“声明能力”中勾选“支持思考档位”，填写 `low, high, max`，默认档位选择 `high`，点击“保存目录”。模型能力需要同步到 Kimi；仅改全局档位而不更新模型声明，会再次触发校验错误。beta.7 也可从管理页 → 修改接入 → 模型右侧“设置”，逐个调整支持的思考档位和默认档位；旧版本请使用上述控制面板入口。详见 [模型选择说明](MODEL-PICKER.md)。
 
 Relay 对应的模型配置字段为：
 
@@ -59,7 +59,7 @@ HTTP 接受某个档位不证明上游实际按不同强度执行。要核实档
 
 `Supported efforts: off` reflects imported local capabilities, not proof that the provider lacks reasoning. The migration used conservative `reasoning: false` metadata.
 
-Open the Relay control panel, edit the model catalog, enable thinking, enter `low, high, max`, choose default `high`, and save. Synchronize capabilities to Kimi before choosing a non-off effort. Existing conversations have separate effort preferences.
+Open the Relay control panel, edit the model catalog, enable thinking, enter `low, high, max`, choose default `high`, and save. In beta.7 the same per-model controls are also available in Modify connection → model Settings; see the [model picker guide](MODEL-PICKER.md). Synchronize capabilities to Kimi before choosing a non-off effort. Existing conversations have separate effort preferences.
 
 After backup, the three local model declarations and Kimi BYOK metadata were updated, and Kimi's local configuration interface regenerated runtime settings. Automatic native import was unavailable during this repair. No installation files were modified. New-conversation defaults and the three previously affected conversations now use `high`.
 

@@ -39,4 +39,3 @@ test('setup discovery authenticates and only reuses a saved key for its exact co
   assert.equal(failed.status,502);
   assert.deepEqual(await failed.json(),{error:{code:'discovery_http_error',httpStatus:401}});
 });
-
