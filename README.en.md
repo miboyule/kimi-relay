@@ -8,10 +8,12 @@ This desktop derivative uses [Kimi Work Gateway](https://github.com/wssz527/kimi
 
 **Recommended: Lite.** Uses your default browser instead of bundling Electron. Full archives are under 50 MB; subsequent updates can replace Relay application files using a roughly 0.51 MB code-only ZIP. Historical Electron builds remain available. See [Lite usage and file replacement](docs/LITE.md).
 
+beta.7 includes provider defaults, a searchable live model picker and per-model reasoning effort settings. See the [bilingual model picker guide](docs/MODEL-PICKER.md).
+
 ## Quick start
 
 1. Download the ZIP for your system and extract the entire archive. On Windows, open `Start Kimi Relay.vbs` (or `.cmd`). On macOS, open `Kimi Relay Lite.app` (or `.command`), keeping the entire extracted folder together. Do not move only the small `.app` launcher. Your default browser opens the manager. Node/npm installation is not required.
-2. Enter your provider's Base URL, API key and real model IDs. Select Chat Completions or Responses. Declare only capabilities the provider supports. Setup starts with a conservative 32K token context budget.
+2. Setup defaults to Qiyue API and three Kimi models. Enter your API key, fetch the catalog, search and check models to populate IDs and capabilities. Other providers and manual IDs remain supported. The three presets use a 256K budget and low / high / max reasoning efforts with high as default; unknown models start at 32K with capabilities to be declared.
 3. Finish the native connection in the control panel, then select the imported model in Kimi Work. Keep Relay running. Closing browser tabs leaves the gateway running; Stop and exit in the manager stops it. Launch again to reopen the manager.
 
 If native onboarding requires domain resolution, open Edit connection from the manager (old Electron edition: application menu), expand the advanced options and explicitly enable it. Windows adds one marked hosts pair; macOS adds a domain-specific resolver. The OS requests administrator authorization. This option is off by default.

@@ -53,3 +53,6 @@ Exit the previous Electron edition before running Lite. They share the same defa
 For later updates, stop the gateway, back up `app/`, launchers and `VERSION.json`, then extract the code-only ZIP over the existing Lite folder. Keep `runtime/` and all data. Roll back by stopping and restoring the saved application files. Code-only packages currently require Node 24; future runtime changes will be documented. They are **not Kimi application patches** and must not be extracted into an Electron package's `resources/` folder.
 
 Default data paths: Windows `%APPDATA%/Kimi Relay/gateway`; macOS `~/Library/Application Support/Kimi Relay/gateway`. Override with `KIMI_RELAY_HOME`. Lite does not use the Electron `portable-mode` marker; point that environment variable at the previous portable data if needed. The manager replaces desktop menu commands, including DNS removal. See the bilingual recovery guide for reverting Kimi settings. Keep keys, backups and authenticated local URLs private. Relay balance is not official Kimi credit. Unsigned preview; a signed-in real-provider task still needs validation.
+
+
+beta.7 默认供应商、在线模型选择、思考档位保存与使用说明 / Provider defaults, live selection and reasoning setup: [MODEL-PICKER.md](MODEL-PICKER.md).

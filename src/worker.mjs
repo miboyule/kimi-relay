@@ -6,8 +6,8 @@ import { loadCore } from './core.mjs';
 import { createGuardedOnboarding } from './policy.mjs';
 import { backupFiles, kimiBackupFiles } from './migration.mjs';
 import { RelayPanelController, RelayPanel } from './panel.mjs';
-import { allowLocalPageNavigation } from './browser.mjs';
 import { inspectWindowsApplication } from './windows-processes.mjs';
+import { RelaySetup } from './setup-discovery.mjs';
 
 const args = process.argv.slice(2);
 const option = name => args[args.indexOf(name) + 1];
@@ -19,7 +19,7 @@ const configFile = path.join(stateDir, 'gateway.json');
 const entryFile = path.join(stateDir, 'panel-entry.json');
 const send = value => { if (process.connected) process.send(value); };
 const { run } = await loadCore('cli.mjs');
-const { SetupServer, setupPaths, setupState, writePrivateJson } = await loadCore('src/setup.mjs');
+const { setupPaths, setupState, writePrivateJson } = await loadCore('src/setup.mjs');
 let setup, panelTask, releasePanel, shuttingDown = false;
 let activeGateway;
 let lastCode = null;
@@ -87,10 +87,7 @@ async function startPanel() {
 
 async function startSetup() {
   const colocated = fileURLToPath(new URL('./ui/', import.meta.url));
-  class BrowserSetup extends SetupServer {
-    handle(req, res) { allowLocalPageNavigation(req); return super.handle(req, res); }
-  }
-  setup = new BrowserSetup({ stateDir, uiDir: fs.existsSync(colocated) ? colocated : fileURLToPath(new URL('../ui/', import.meta.url)),
+  setup = new RelaySetup({ stateDir, uiDir: fs.existsSync(colocated) ? colocated : fileURLToPath(new URL('../ui/', import.meta.url)),
     onSaved: () => { void startPanel().catch(error => failure(error.message)); } });
   const save = setup.save.bind(setup);
   setup.save = async input => {

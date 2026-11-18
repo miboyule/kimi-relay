@@ -1,3 +1,11 @@
+**beta.7：默认供应商 + 在线模型选择。** 首次设置默认使用 `https://token-api.qiyue999.com/v1`，预置 `kimi-k3-1`、`kimi-k3.1-pro`、`kimi-k2.8-preview`。填 Key 后点击“拉取模型列表”，搜索并勾选，模型 ID 与能力自动填入；每个模型可单独调整。已保存的连接与 Key 保留。
+
+**思考档位修复已包含在源码和发行包。** 这三个预设声明 `low / high / max`、默认 `high`，保存时完整写入能力与默认档位。关闭思考会清除旧档位，避免残留冲突。已有用户自定义配置不会被自动覆盖。上游是否实际区分各档强度仍取决于供应商实现；详见 [思考与 New API 说明](https://github.com/miboyule/kimi-relay/blob/main/docs/REASONING-AND-NEWAPI.md)。同时修复“修改接入”实际打开设置和 Windows Kimi helper 识别。
+
+**beta.7: provider defaults and live model selection.** Setup defaults to the Qiyue endpoint above and the three exact model IDs. Fetch the provider catalog, search and select models; IDs and declared capabilities are populated automatically and can be edited per model. Existing connections and credentials are preserved. The three presets include `low / high / max`, defaulting to `high`; disabling reasoning clears stale effort fields. Existing custom declarations are not silently overwritten. See the bilingual [setup guide](https://github.com/miboyule/kimi-relay/blob/main/docs/MODEL-PICKER.md).
+
+---
+
 Kimi Relay **Lite 轻量预览版**：移除内置 Electron 浏览器，沿用现有网关，改为系统默认浏览器管理。Windows 完整包约 **35.5 MB**（上一版约 187.5 MB），代码更新包约 **0.51 MB**。三个系统完整包均强制小于 50,000,000 字节。
 
 **首次使用：** 下载对应系统的 `win-x64`、`mac-x64` 或 `mac-arm64` 完整 ZIP，全部解压。Windows 双击 `Start Kimi Relay.vbs`（备用 `.cmd`）；Mac 双击 `Kimi Relay Lite.app`（备用 `.command`）。保留整个解压文件夹，不要单独移动 `.app`。点击管理页里的设置 / 控制面板完成接入。关闭网页仍继续运行，点击“停止并退出”停止网关。

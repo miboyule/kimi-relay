@@ -16,6 +16,11 @@ let launcher, browser, entry;
 const upstream = http.createServer(async (req, res) => {
   for await (const chunk of req) {}
   res.setHeader('content-type', 'application/json');
+  if (req.url === '/v1/models') {
+    res.end(JSON.stringify({data:[{id:'deepseek-chat',name:'Test reasoning model',tools:true,reasoning:true,
+      context_window:65536,effort:{supported_levels:['low','high','max']}},{id:'manual-model'}]}));
+    return;
+  }
   res.end(JSON.stringify({ id: 'lite-smoke', choices: [{ message: { role: 'assistant', content: 'lite-forward-ok' } }] }));
 });
 upstream.listen(0, '127.0.0.1');
@@ -74,15 +79,33 @@ try {
   await link.click();
   const setup = await opened;
   setup.on('pageerror', error => errors.push(error.message));
+  await setup.locator('#discover:enabled').waitFor();
+  assert.equal(await setup.locator('#url').inputValue(), 'https://token-api.qiyue999.com/v1');
+  assert.equal(await setup.locator('#models').inputValue(), 'kimi-k3-1\nkimi-k3.1-pro\nkimi-k2.8-preview');
+  assert.equal(await setup.locator('#default-effort').inputValue(), 'high');
+  await setup.screenshot({ path: '.test-artifacts/lite-setup.png', fullPage: true });
+  await setup.setViewportSize({width:375,height:812});
+  assert.equal(await setup.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+  await setup.screenshot({ path: '.test-artifacts/lite-setup-mobile.png', fullPage:true });
+  await setup.setViewportSize({width:1280,height:900});
   await setup.locator('#name').fill('Lite packaged test');
   await setup.locator('#url').fill(`http://127.0.0.1:${upstream.address().port}/v1`);
   await setup.locator('#key').fill('synthetic-lite-key');
-  await setup.locator('#models').fill('deepseek-chat');
-  await setup.locator('summary').click();
+  await setup.locator('#discover').click();
+  await setup.getByText('已拉取 2 个模型。', {exact:false}).waitFor();
+  await setup.locator('#search').fill('deepseek');
+  await setup.getByRole('checkbox',{name:'deepseek-chat',exact:true}).check();
+  assert.equal(await setup.locator('#models').inputValue(),'deepseek-chat');
+  assert.equal(await setup.locator('#default-effort').inputValue(),'high');
+  await setup.locator('#advanced summary').click();
   await setup.locator('#port').fill(String(port));
   const originalOrigin = new URL(setup.url()).origin;
   await setup.getByRole('button', { name: '保存并打开控制面板' }).click();
   await setup.waitForURL(url => url.origin !== originalOrigin, { timeout: 45000 });
+  const savedModel = JSON.parse(await fs.readFile(path.join(state,'gateway.json'),'utf8')).models[0];
+  assert.deepEqual(savedModel.reasoningEfforts,['low','high','max']);
+  assert.equal(savedModel.defaultEffort,'high');
+  assert.equal(savedModel.contextWindow,65536);
   const credentialsFile = path.join(state, 'credentials.json');
   let credentials = await fs.readFile(credentialsFile);
   const key = JSON.parse(credentials).gatewayToken;
@@ -104,9 +127,18 @@ try {
   await manager.locator('#name').waitFor({ state: 'visible' });
   await manager.waitForFunction(() => document.querySelector('#models').value === 'deepseek-chat');
   assert.equal(await manager.locator('#key').inputValue(), '');
+  await manager.locator('#discover').click();
+  await manager.getByText('已拉取 2 个模型。', {exact:false}).waitFor();
+  assert.equal(await manager.locator('#default-effort').inputValue(),'high');
+  // Turning reasoning off must remove stale effort declarations too.
+  await manager.locator('#reasoning').uncheck();
   const modifiedOrigin = new URL(manager.url()).origin;
   await manager.getByRole('button', { name: '保存并打开控制面板' }).click();
   await manager.waitForURL(url => url.origin !== modifiedOrigin, { timeout: 45000 });
+  const noReasoning = JSON.parse(await fs.readFile(path.join(state,'gateway.json'),'utf8')).models[0];
+  assert.equal(noReasoning.reasoning,false);
+  assert.equal(noReasoning.reasoningEfforts,undefined);
+  assert.equal(noReasoning.defaultEffort,undefined);
   const savedCredentials = await fs.readFile(credentialsFile);
   const { updatedAt: previousUpdate, ...previousValues } = JSON.parse(credentials);
   const { updatedAt: savedUpdate, ...savedValues } = JSON.parse(savedCredentials);

@@ -1,119 +1,129 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kimi Relay · 连接你的模型</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kimi Relay · 连接模型</title>
 <style nonce="__SETUP_NONCE__">
-:root{color-scheme:light;--bg:#f4f3ef;--ink:#232e2d;--muted:#66716d;--line:#d9ddd6;--green:#245e4e;--focus:#357c68;font-family:system-ui,"Microsoft YaHei",sans-serif}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.65}main{max-width:1020px;margin:40px auto;padding:0 32px;display:grid;grid-template-columns:260px 1fr;gap:56px}.brand{font-size:19px;font-weight:700;letter-spacing:-.5px;display:flex;gap:12px;align-items:center}.mark{width:36px;height:36px;background:var(--green);color:white;display:grid;place-items:center;border-radius:8px;font-size:23px}aside{padding-top:12px}h1{font-size:32px;line-height:1.3;letter-spacing:-1px;margin:48px 0 16px}aside p{color:var(--muted)}.steps{margin-top:48px;padding:0;list-style:none}.steps li{padding:12px 0;border-bottom:1px solid var(--line)}.steps span{color:var(--green);font-weight:700;margin-right:12px}.badge{display:inline-block;border:1px solid var(--line);border-radius:4px;padding:3px 8px;font-size:12px;color:var(--muted);margin-top:24px}article{background:#fff;border:1px solid var(--line);border-radius:12px;padding:32px}h2{font-size:22px;margin:0 0 5px}p{margin:0 0 20px}.muted,small{color:var(--muted)}label{display:block;font-weight:600;margin:20px 0 7px}input,textarea,select{width:100%;border:1px solid #bfc8bf;border-radius:6px;padding:11px 12px;color:var(--ink);background:white;font:inherit}textarea{resize:vertical;min-height:100px;font-family:ui-monospace,monospace}input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid #a5cbbb;outline-offset:2px}.row{display:grid;grid-template-columns:1fr 1fr;gap:20px}.check{font-weight:400;display:flex;gap:9px;align-items:flex-start;margin:12px 0}.check input{width:16px;min-width:16px;margin:5px 0 0;accent-color:var(--green)}details{border-top:1px solid var(--line);margin-top:24px;padding-top:16px}summary{cursor:pointer;color:var(--muted)}button{border:0;border-radius:6px;padding:12px 20px;font:600 14px system-ui;background:var(--green);color:white;width:100%;cursor:pointer;margin-top:24px}button:disabled{opacity:.55;cursor:wait}#status{white-space:pre-wrap;margin-top:14px;font-size:13px}#status[data-error=true]{color:#a2352c}footer{grid-column:1/-1;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding:16px 0}code{font-size:12px}small{display:block;margin-top:5px}.saved{background:#edf4ee;padding:10px 12px;border-radius:5px;margin:16px 0;font-size:13px}@media(max-width:760px){main{grid-template-columns:1fr;gap:24px;margin:24px auto;padding:0 20px}aside h1{margin:24px 0 10px;font-size:26px}.steps,.badge{display:none}article{padding:24px}.row{grid-template-columns:1fr;gap:0}}
+:root{color-scheme:light;--bg:#f5f5f2;--ink:#202c29;--muted:#6b756f;--line:#dfe4dd;--green:#215b46;--soft:#edf5ef;font-family:Inter,system-ui,"Microsoft YaHei",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6}button,input,textarea,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:default}button,input,textarea,select{border-radius:8px}input,textarea,select{width:100%;border:1px solid #cdd5cd;padding:10px 12px;background:#fff;color:var(--ink)}input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #a6cbbb;outline-offset:2px}input[type=checkbox]{width:17px;height:17px;accent-color:var(--green);flex-shrink:0}main{max-width:1180px;margin:36px auto;padding:0 32px;display:grid;grid-template-columns:232px minmax(0,1fr);gap:52px}.brand{font-size:20px;font-weight:750;display:flex;gap:11px;align-items:center;letter-spacing:-.6px}.mark{display:grid;place-items:center;background:var(--green);color:#fff;width:35px;height:35px;border-radius:10px;font-size:24px}aside{padding-top:12px}h1{font-size:32px;line-height:1.4;letter-spacing:-1px;margin:54px 0 16px}aside p,.muted,small{color:var(--muted)}.steps{padding:0;list-style:none;margin:44px 0}.steps li{padding:14px 0;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}.steps span{font:600 12px ui-monospace,monospace;color:var(--green);background:#e6eee6;border-radius:50%;width:26px;height:26px;display:grid;place-items:center}.local{font-size:12px;color:var(--muted)}article{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 36px #263f2e05;overflow:hidden}.intro{padding:28px 30px 22px;border-bottom:1px solid var(--line)}.eyebrow{font-size:11px;font-weight:700;letter-spacing:1.4px;color:var(--green)}h2{font-size:24px;letter-spacing:-.5px;margin:6px 0}p{margin:0 0 12px}.intro p{margin:0}form{padding:0 30px 26px}.section{padding:22px 0;border-bottom:1px solid var(--line)}.section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}.section-title h3{font-size:15px;margin:0}.pill,.tag{display:inline-block;font-size:11px;padding:3px 8px;border:1px solid var(--line);border-radius:5px;white-space:nowrap;color:var(--muted)}.pill{color:var(--green);border-color:#c9ddce;background:var(--soft)}label{display:block;font-size:12px;font-weight:650;margin:14px 0 6px}.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}.row label:first-child{margin-top:0}.field-label{display:flex;justify-content:space-between;align-items:center}.field-label span{font-weight:400;color:var(--muted)}small{display:block;font-size:12px;margin-top:6px}.address{font-size:13px;font-family:ui-monospace,monospace}.key-row{display:flex;gap:9px}.key-row input{min-width:0}.secondary{border:1px solid #cbd7ce;background:#fff;color:var(--green);padding:9px 14px;font-weight:650;white-space:nowrap}.secondary:hover{background:var(--soft)}.quiet{border:0;background:transparent;color:var(--green);font-size:12px;padding:4px 0}.picker-top{display:flex;gap:12px;align-items:center;margin:12px 0}.picker-top input{background:#f8faf7;font-size:13px}.picker-top button{flex-shrink:0}.model-list{display:grid;gap:8px;max-height:310px;overflow:auto;padding:3px}.model-row{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:12px 14px;background:#fff}.model-row.selected{border-color:#9dbda9;background:#f6faf6}.model-row.active{box-shadow:inset 3px 0 var(--green)}.model-row label{display:flex;gap:12px;align-items:center;flex:1;min-width:0;margin:0;cursor:pointer}.model-text{min-width:0;overflow-wrap:anywhere}.model-name{display:block;font-size:14px;font-weight:650}.model-id{display:block;font:11px ui-monospace,monospace;color:var(--muted);margin-top:3px}.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.model-row .quiet{padding:8px}.selection-bar{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;margin:12px 3px 0}.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:8px}.editor{background:#f8faf7;border:1px solid var(--line);padding:16px;border-radius:9px;margin-top:16px}.editor-head{font-size:12px;font-weight:650;overflow-wrap:anywhere}.editor-head span{color:var(--green)}.check{display:flex;gap:8px;align-items:center;font-weight:400;margin:12px 0;font-size:13px}.check input{margin:0}.checks{display:flex;flex-wrap:wrap;gap:0 20px}.checks label{margin:12px 0 0}details{margin-top:16px}summary{font-size:12px;color:var(--muted);cursor:pointer}textarea{font-family:ui-monospace,monospace;min-height:95px;font-size:12px;margin-top:12px;resize:vertical}.saved{background:var(--soft);color:var(--green);font-size:12px;padding:10px 14px;margin-top:20px;border-radius:7px}.notice{font-size:12px;color:var(--muted);margin:18px 0 12px}.primary{width:100%;border:0;background:var(--green);color:white;padding:13px 20px;font-weight:650}.primary:hover{background:#174b38}#status,#catalog-status{font-size:12px;white-space:pre-wrap;margin-top:10px;color:var(--muted)}[data-error=true]{color:#a33228!important}footer{grid-column:1/-1;font-size:11px;color:var(--muted);padding-top:4px;border-top:1px solid var(--line)}[hidden]{display:none!important}@media(max-width:850px){main{grid-template-columns:1fr;gap:22px;max-width:740px;margin:22px auto;padding:0 20px}aside h1{font-size:26px;margin:24px 0 8px}aside h1 br{display:none}.steps,.local,aside>p{display:none}.intro{padding:24px}form{padding:0 24px 24px}}@media(max-width:480px){main{padding:0 12px}.intro{padding:20px}form{padding:0 18px 20px}.row{grid-template-columns:1fr;gap:12px}.key-row{flex-wrap:wrap}.key-row button{width:100%}.section-title{align-items:flex-start}.model-row{padding:10px;gap:6px}.tag{font-size:10px}.selection-bar{flex-wrap:wrap}}
 </style>
-</head>
-<body>
-<main>
-<aside>
-  <div class="brand"><div class="mark" aria-hidden="true">⇄</div>Kimi Relay</div>
-  <h1>熟悉的工作台，<br>自己的模型。</h1>
-  <p>把你的模型供应商接入 Kimi Work，继续使用原来的工作流。</p>
-  <ol class="steps"><li><span>01</span>填写供应商</li><li><span>02</span>添加模型</li><li><span>03</span>在 Kimi 中选择</li></ol>
-  <div class="badge">0.1 预览版 · 本机运行</div>
-</aside>
-<article>
-  <h2>连接你的模型</h2>
-  <p class="muted">支持 OpenAI 兼容接口。保存后进入模型控制面板。</p>
-  <p class="muted">此连接使用供应商 API 余额，不会增加 Kimi 官方积分。</p>
-  <div id="existing" class="saved" hidden>已找到保存的连接。API Key 留空即可保留原值。</div>
-  <form id="form">
-    <label for="name">连接名称</label><input id="name" required maxlength="128" value="我的模型供应商" autocomplete="off">
-    <label for="url">API 地址 · Base URL</label><input id="url" type="url" required placeholder="https://api.example.com/v1" spellcheck="false" autocomplete="off">
-    <small>填写到 /v1 等接口前缀；本地服务可以使用 HTTP。</small>
-    <label for="key">API Key</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="仅保存在本机，不回显">
-    <label for="models">模型 ID</label><textarea id="models" required spellcheck="false" placeholder="deepseek-chat&#10;deepseek-reasoner"></textarea>
-    <small>每行一个真实模型 ID。模型名称无需改成 kimi 开头，程序会处理本地别名。</small>
-    <div class="row">
-      <div><label for="protocol">接口协议</label><select id="protocol"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select></div>
-      <div><label for="context">上下文预算 · tokens</label><input id="context" type="number" min="1024" max="10000000" step="1" value="32768" required></div>
-    </div>
-    <label class="check"><input id="tools" type="checkbox" checked><span>模型支持工具调用（Work 执行任务需要）</span></label>
-    <details><summary>更多连接选项</summary>
-      <label class="check"><input id="image" type="checkbox"><span>模型支持图片输入</span></label>
-      <label class="check"><input id="reasoning" type="checkbox"><span>模型支持推理能力</span></label>
-      <label for="port">本机网关端口</label><input id="port" type="number" min="1024" max="65535" value="3426" required>
-      <label class="check"><input id="dns" type="checkbox"><span>允许配置 Kimi 所需的单域名解析<br><small>部分安装需要此选项。Windows 添加一组带标记的 hosts 条目；macOS 添加单域名 resolver。执行时由系统请求管理员授权，可在管理页（桌面版应用菜单）撤销。</small></span></label>
-    </details>
-    <button id="save" type="submit">保存并打开控制面板 →</button>
-    <div id="status" role="status" aria-live="polite"></div>
-  </form>
-</article>
+</head><body><main>
+<aside><div class="brand"><div class="mark" aria-hidden="true">⇄</div>Kimi Relay</div><h1>工作台照旧，<br>模型由你选。</h1><p>接入自己的模型供应商，<br>继续熟悉的 Kimi Work 工作流。</p><ol class="steps"><li><span>01</span>连接供应商</li><li><span>02</span>选择模型</li><li><span>03</span>开始使用</li></ol><div class="local">● 本机运行 · 密钥保存在本机</div></aside>
+<article><div class="intro"><div class="eyebrow">CONNECT YOUR MODELS</div><h2>连接你的模型</h2><p class="muted">地址已填好。输入 API Key，拉取并选择要使用的模型。</p></div>
+<form id="form"><div id="existing" class="saved" hidden>已载入当前连接。API Key 留空即可沿用，保存前会自动备份。</div>
+<section class="section"><div class="section-title"><h3>01 · 供应商</h3><span class="pill">OpenAI 兼容接口</span></div>
+<label for="name">连接名称</label><input id="name" required maxlength="128" value="七月 API" autocomplete="off">
+<label for="url" class="field-label">API 地址 <span>Base URL</span></label><input id="url" class="address" type="url" required value="https://token-api.qiyue999.com/v1" spellcheck="false" autocomplete="off"><small>可修改为其他供应商的接口地址，填写到 /v1 等接口前缀。</small>
+<label for="key">API Key</label><div class="key-row"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴供应商提供的 API Key"><button id="discover" class="secondary" type="button" disabled>拉取模型列表 ↻</button></div><div id="catalog-status" role="status" aria-live="polite">已预置 3 个 Kimi 模型；拉取可查看此 Key 实际可用的模型。</div></section>
+<section class="section"><div class="section-title"><h3>02 · 选择模型</h3><span id="count" class="pill">已选 3 个</span></div><div class="picker-top"><input id="search" type="search" placeholder="搜索模型名称或 ID…" aria-label="搜索模型"><button id="select-visible" class="quiet" type="button">选择搜索结果</button></div><div id="model-list" class="model-list" aria-label="可选模型"></div><div class="selection-bar"><span>勾选即自动填入 ID 与模型配置</span><button id="clear" class="quiet" type="button">清空选择</button></div>
+<div id="editor" class="editor"><div class="editor-head">当前模型配置 · <span id="editing"></span></div><small>点击模型右侧“设置”可逐个调整。思考档位会随模型一同保存。</small><div class="row"><div><label for="protocol">接口协议</label><select id="protocol"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select></div><div><label for="context">上下文预算 · tokens</label><input id="context" type="number" min="1024" max="10000000" value="262144" required></div></div><div class="checks"><label class="check"><input id="tools" type="checkbox" checked>工具调用</label><label class="check"><input id="reasoning" type="checkbox" checked>支持思考</label><label class="check"><input id="image" type="checkbox">图片输入</label></div><div id="thinking-fields" class="row"><div><label for="efforts">支持的思考档位</label><input id="efforts" value="low, high, max" placeholder="例如 low, high, max" spellcheck="false"></div><div><label for="default-effort">默认思考档位</label><select id="default-effort"><option>low</option><option selected>high</option><option>max</option></select></div></div></div>
+<details id="manual"><summary>手动填写模型 ID</summary><textarea id="models" spellcheck="false" aria-label="选中的模型 ID"></textarea><small>每行一个真实 ID，与上方勾选同步。未知模型需按供应商文档配置能力。</small></details></section>
+<details id="advanced"><summary>更多连接选项</summary><label for="port">本机网关端口</label><input id="port" type="number" min="1024" max="65535" value="3426" required><label class="check"><input id="dns" type="checkbox"><span>允许配置 Kimi 所需的单域名解析</span></label><small>部分安装需要此项。Windows 添加带标记的 hosts 条目，macOS 添加单域名 resolver；可从管理页撤销。</small></details>
+<p class="notice">使用供应商 API 余额计费，不会增加 Kimi 官方积分。</p><button id="save" class="primary" type="submit" disabled>保存并打开控制面板 →</button><div id="status" role="status" aria-live="polite"></div></form></article>
 <footer>独立开源项目 · 基于 Kimi Work Gateway（MIT） · 不修改 Kimi 安装包 · 不自动添加开机启动</footer>
 </main>
 <script nonce="__SETUP_NONCE__">
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  const DEFAULT_URL = 'https://token-api.qiyue999.com/v1';
+  const presets = ['kimi-k3-1','kimi-k3.1-pro','kimi-k2.8-preview'].map((id,i) => ({id,name:['Kimi K3.1','Kimi K3.1 Pro','Kimi K2.8 Preview'][i],protocol:'chat',contextWindow:262144,tools:true,reasoning:true,reasoningEfforts:['low','high','max'],defaultEffort:'high',inputModalities:['text']}));
   const params = new URLSearchParams(location.hash.slice(1));
-  let token = params.get('key') || sessionStorage.getItem('relay-setup-session');
-  if (token) sessionStorage.setItem('relay-setup-session', token);
-  history.replaceState(null, '', location.pathname);
-  let connectionId = 'relay';
-  let previousModels = [];
-  const messages = { invalid_api_key:'请填写 API Key。', invalid_base_url:'请检查 API 地址。远程地址需要 HTTPS，且不能包含密钥或查询参数。', invalid_models:'请检查模型 ID 和上下文预算。', invalid_port:'端口需在 1024–65535 之间。', setup_config_conflict:'配置文件已存在且归属不符，已保留原文件。', setup_credentials_conflict:'凭据文件归属不符，已保留原文件。', unauthorized:'会话已失效，请从管理页（桌面版应用菜单）重新打开首次设置。', setup_failed:'保存失败，请检查数据目录是否可写。' };
-  const say = (text, error=false) => { $('status').textContent=text; $('status').dataset.error=String(error); };
-  async function api(route, body) {
-    const response = await fetch(route, { method:body ? 'POST':'GET', headers:{ authorization:'Bearer '+token, ...(body ? {'content-type':'application/json'}:{}) }, ...(body ? {body:JSON.stringify(body)}:{}) });
-    const data = await response.json();
-    if (!response.ok) throw Error(messages[data.error?.code] || '操作未完成：'+(data.error?.code || response.status));
+  const token = params.get('key') || sessionStorage.getItem('relay-setup-session');
+  if(token) sessionStorage.setItem('relay-setup-session',token);
+  history.replaceState(null,'',location.pathname);
+  let connectionId='relay', active=null, locked=false, ready=false, epoch=0;
+  const catalog=new Map(), selected=new Set();
+  const urlValue=()=>$('url').value.trim().replace(/\/+$/,'');
+  let currentURL=DEFAULT_URL;
+  const messages={invalid_api_key:'请填写当前地址对应的 API Key。地址更改后需重新输入。',invalid_base_url:'请检查 API 地址：远程接口需要 HTTPS，且不能含查询参数或密钥。',invalid_models:'请检查模型 ID、上下文和思考档位。',invalid_port:'端口需在 1024–65535 之间。',unauthorized:'会话已失效，请从管理页重新打开设置。',setup_busy:'正在处理上一项操作，请稍后重试。',discovery_http_error:'供应商未能返回列表，请检查 Key 权限、地址或稍后重试。',discovery_timeout:'拉取超时，可重试或使用预置 / 手动模型。',discovery_invalid_catalog:'供应商未返回模型列表，可使用预置 / 手动模型。',discovery_unavailable:'暂时无法连接供应商，可重试或手动添加。'};
+  const say=(text,error=false,id='status')=>{$(id).textContent=text;$(id).dataset.error=String(error);};
+  async function api(route,body){
+    const response=await fetch(route,{method:body?'POST':'GET',headers:{authorization:'Bearer '+token,...(body?{'content-type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
+    const data=await response.json();
+    if(!response.ok)throw Error(messages[data.error?.code]||'操作未完成：'+(data.error?.code||response.status));
     return data;
   }
-  $('form').addEventListener('submit', async event => {
-    event.preventDefault();
-    $('save').disabled=true;
-    say('正在保存本机连接…');
-    try {
-      const protocol=$('protocol').value;
-      const ids=[...new Set($('models').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))];
-      const models=ids.map(id=>{
-        const old=previousModels.find(row=>(row.upstreamModelId || row.id)===id);
-        return { ...(old || {}), id:connectionId+'/'+(protocol==='chat'?'kimi-':'resp-')+encodeURIComponent(id), name:old?.name || id, upstreamModelId:id, connectionId, protocol, contextWindow:Number($('context').value), tools:$('tools').checked, reasoning:$('reasoning').checked, inputModalities:$('image').checked?['text','image']:['text'] };
-      });
-      const key=$('key').value.trim();
-      const connection={id:connectionId,name:$('name').value.trim(),baseURL:$('url').value.trim(),...(key?{apiKey:key}:{})};
-      const payload={connections:[connection],models,port:Number($('port').value),dns:$('dns').checked,installService:false};
-      await api('/api/save',payload);
-      $('key').value='';
-      say('已保存。正在启动网关，稍后自动打开控制面板…');
-      for (let attempt=0;attempt<60;attempt++) {
-        await new Promise(resolve=>setTimeout(resolve,500));
-        const data=await api('/api/state');
-        if (data.panel?.state==='ready' && data.panel.entryURL) {
-          const target=new URL(data.panel.entryURL);
-          if(target.protocol==='http:' && target.hostname==='127.0.0.1' && target.port && !target.username && !target.password) {
-            location.replace(target.href);return;
-          }
-        }
-      }
-      say('设置已保存。请返回管理页查看网关状态，再打开控制面板。');
-    } catch(error) { say(error.message,true); }
-    finally { $('save').disabled=false; }
-  });
-  api('/api/state').then(({state})=>{
-    if (!state.configured) return;
-    $('existing').hidden=false;
-    const connection=state.connections[0];
-    if (state.connections.length>1 || new Set(state.models.map(x=>x.protocol)).size>1) {
-      $('save').disabled=true;
-      say('当前已有多连接或混合协议配置，请从管理页（桌面版应用菜单）打开控制面板维护。首次设置页不会覆盖这类配置。');
-      return;
+  function normalize(row){
+    const id=row.upstreamModelId||row.id;
+    const result={id,name:row.name||id,protocol:row.protocol||(row.protocols?.includes('chat')?'chat':row.protocols?.[0])||'chat',contextWindow:row.contextWindow||32768,tools:row.tools===true,reasoning:row.reasoning===true||Boolean(row.reasoningEfforts?.length),inputModalities:row.inputModalities||['text']};
+    if(row.maxOutputTokens)result.maxOutputTokens=row.maxOutputTokens;
+    for(const field of ['contextLimit','metadataSource'])if(row[field]!==undefined)result[field]=row[field];
+    if(result.reasoning&&row.reasoning!==false){result.reasoningEfforts=[...(row.reasoningEfforts||[])];result.defaultEffort=row.defaultEffort|| (result.reasoningEfforts.includes('high')?'high':result.reasoningEfforts[0]);}
+    else result.reasoning=false;
+    return result;
+  }
+  function syncIDs(){$('models').value=[...selected].join('\n');$('count').textContent='已选 '+selected.size+' 个';}
+  function efforts(){return [...new Set($('efforts').value.split(/[,，\s]+/).filter(Boolean))];}
+  function effortOptions(value){const list=efforts();$('default-effort').replaceChildren(...list.map(e=>new Option(e,e)));$('default-effort').value=list.includes(value)?value:list.includes('high')?'high':list[0]||'';$('thinking-fields').hidden=!$('reasoning').checked;}
+  function flush(){
+    if(!active||!catalog.has(active))return;
+    const row=catalog.get(active);row.protocol=$('protocol').value;row.contextWindow=Number($('context').value);row.tools=$('tools').checked;row.reasoning=$('reasoning').checked;row.inputModalities=$('image').checked?['text','image']:['text'];
+    delete row.reasoningEfforts;delete row.defaultEffort;
+    if(row.reasoning){row.reasoningEfforts=efforts();if($('default-effort').value)row.defaultEffort=$('default-effort').value;}
+  }
+  function edit(id){
+    flush();active=id;const row=catalog.get(id);$('editor').hidden=!row;if(!row)return;
+    $('editing').textContent=id;$('protocol').value=row.protocol;$('context').value=row.contextWindow;$('tools').checked=row.tools;$('reasoning').checked=row.reasoning;$('image').checked=row.inputModalities.includes('image');$('efforts').value=(row.reasoningEfforts||[]).join(', ');effortOptions(row.defaultEffort);
+  }
+  function visible(){const q=$('search').value.trim().toLowerCase();return [...catalog.values()].filter(row=>(row.id+' '+row.name).toLowerCase().includes(q));}
+  function render(){
+    const list=$('model-list');list.replaceChildren();
+    for(const row of visible()){
+      const wrap=document.createElement('div');wrap.className='model-row'+(selected.has(row.id)?' selected':'')+(active===row.id?' active':'');
+      const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.checked=selected.has(row.id);box.setAttribute('aria-label',row.id);
+      box.addEventListener('change',()=>{flush();if(box.checked){selected.add(row.id);edit(row.id);}else selected.delete(row.id);syncIDs();render();});
+      const text=document.createElement('span');text.className='model-text';const name=document.createElement('span');name.className='model-name';name.textContent=row.name;text.append(name);
+      const id=document.createElement('span');id.className='model-id';id.textContent=row.id;text.append(id);
+      const tags=document.createElement('span');tags.className='tags';for(const t of [row.contextWindow>=1024?Math.round(row.contextWindow/1024)+'K 预算':null,row.tools?'工具调用':null,row.reasoning?('思考 '+(row.reasoningEfforts?.join(' / ')||'已声明')):null]){if(!t)continue;const tag=document.createElement('span');tag.className='tag';tag.textContent=t;tags.append(tag);}text.append(tags);label.append(box,text);
+      const settings=document.createElement('button');settings.type='button';settings.className='quiet';settings.textContent='设置';settings.setAttribute('aria-label','设置 '+row.id);settings.addEventListener('click',()=>{edit(row.id);render();});wrap.append(label,settings);list.append(wrap);
     }
-    previousModels=state.models;
-    if(connection){connectionId=connection.id;$('name').value=connection.name;$('url').value=connection.baseURL;}
-    $('models').value=state.models.map(x=>x.upstreamModelId || x.id).join('\n');
-    const first=state.models[0];
-    if(first){$('protocol').value=first.protocol;$('context').value=first.contextWindow;$('tools').checked=first.tools===true;$('reasoning').checked=first.reasoning===true;$('image').checked=first.inputModalities?.includes('image')===true;}
-    $('port').value=state.port;
-    $('dns').checked=state.dns?.enabled===true;
+    if(!list.childElementCount){const empty=document.createElement('div');empty.className='empty';empty.textContent='没有匹配的模型。可换个关键词，或手动填写 ID。';list.append(empty);}
+  }
+  function seed(){catalog.clear();selected.clear();active=null;if(currentURL===DEFAULT_URL)for(const row of presets){catalog.set(row.id,normalize(row));selected.add(row.id);}edit([...selected][0]);syncIDs();render();}
+  function addressChanged(){if(urlValue()===currentURL)return;epoch++;currentURL=urlValue();seed();say('地址已更改。请使用此供应商的 Key 拉取，或手动添加模型。',false,'catalog-status');}
+  $('url').addEventListener('change',addressChanged);
+  $('search').addEventListener('input',render);
+  $('clear').addEventListener('click',()=>{selected.clear();syncIDs();render();});
+  $('select-visible').addEventListener('click',()=>{flush();for(const row of visible())selected.add(row.id);syncIDs();render();});
+  $('models').addEventListener('input',()=>{flush();selected.clear();for(const id of $('models').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean)){if(!catalog.has(id))catalog.set(id,normalize({id}));selected.add(id);}if(!selected.has(active))edit([...selected][0]);$('count').textContent='已选 '+selected.size+' 个';render();});
+  for(const id of ['protocol','context','tools','image','default-effort'])$(id).addEventListener('change',()=>{flush();render();});
+  $('reasoning').addEventListener('change',()=>{effortOptions($('default-effort').value);flush();render();});
+  $('efforts').addEventListener('input',()=>{effortOptions($('default-effort').value);flush();render();});
+  $('discover').addEventListener('click',async()=>{
+    addressChanged();flush();const requestEpoch=epoch,baseURL=currentURL,apiKey=$('key').value.trim();$('discover').disabled=true;$('discover').textContent='正在拉取…';say('正在读取供应商模型列表…',false,'catalog-status');
+    try{
+      const {models}=await api('/api/discover',{baseURL,apiKey,connectionId});
+      if(epoch!==requestEpoch||urlValue()!==baseURL)return;
+      const previous=new Map(catalog);catalog.clear();
+      for(const found of models){const old=previous.get(found.id),preset=currentURL===DEFAULT_URL?presets.find(r=>r.id===found.id):null;catalog.set(found.id,normalize({...preset,...found,...(selected.has(found.id)&&old?old:{})}));}
+      for(const id of selected)if(!catalog.has(id)&&previous.has(id))catalog.set(id,previous.get(id));
+      const current=active;active=null;edit(catalog.has(current)?current:catalog.keys().next().value);render();
+      say('已拉取 '+models.length+' 个模型。勾选需要的模型；已选配置已保留。',false,'catalog-status');
+    }catch(error){if(epoch===requestEpoch)say(error.message,true,'catalog-status');}
+    finally{$('discover').disabled=!ready||locked;$('discover').textContent='拉取模型列表 ↻';}
+  });
+  $('form').addEventListener('submit',async event=>{
+    event.preventDefault();if(!ready||locked)return;addressChanged();flush();$('save').disabled=true;
+    try{
+      if(!selected.size)throw Error('请至少选择一个模型，或手动填写模型 ID。');
+      const models=[...selected].map(id=>{const row=catalog.get(id);if(row.reasoning&&(!row.reasoningEfforts?.length||!row.reasoningEfforts.includes(row.defaultEffort)))throw Error('请为 '+id+' 填写思考档位和默认档位。');const {id:upstreamId,...fields}=row;return {...fields,id:connectionId+'/'+(row.protocol==='chat'?'kimi-':'resp-')+encodeURIComponent(id),upstreamModelId:id,connectionId};});
+      const key=$('key').value.trim(),connection={id:connectionId,name:$('name').value.trim(),baseURL:currentURL,...(key?{apiKey:key}:{})};
+      say('正在备份并保存连接…');await api('/api/save',{connections:[connection],models,port:Number($('port').value),dns:$('dns').checked,installService:false});$('key').value='';say('已保存，正在打开控制面板…');
+      for(let attempt=0;attempt<60;attempt++){await new Promise(resolve=>setTimeout(resolve,500));const data=await api('/api/state');if(data.panel?.state==='ready'&&data.panel.entryURL){const target=new URL(data.panel.entryURL);if(target.protocol==='http:'&&target.hostname==='127.0.0.1'&&target.port&&!target.username&&!target.password){location.replace(target.href);return;}}}
+      say('已保存。请返回管理页打开控制面板。');
+    }catch(error){say(error.message,true);}finally{$('save').disabled=locked;}
+  });
+  seed();
+  api('/api/state').then(({state})=>{
+    if(state.configured){
+      $('existing').hidden=false;
+      if(state.connections.length!==1||new Set(state.models.map(x=>x.protocol)).size>1){locked=true;say('已有多连接或混合协议配置，请使用控制面板维护。首次设置页已停止保存。');return;}
+      const connection=state.connections[0];connectionId=connection.id;$('name').value=connection.name;$('url').value=connection.baseURL;currentURL=urlValue();seed();selected.clear();
+      for(const model of state.models){const row=normalize(model);catalog.set(row.id,row);selected.add(row.id);}active=null;edit([...selected][0]);syncIDs();render();$('port').value=state.port;$('dns').checked=state.dns?.enabled===true;
+      say('可直接使用已保存的 Key 拉取模型。',false,'catalog-status');
+    }
+    ready=true;$('save').disabled=false;$('discover').disabled=false;
   }).catch(error=>say(error.message,true));
 })();
-</script>
-</body>
-</html>
+</script></body></html>

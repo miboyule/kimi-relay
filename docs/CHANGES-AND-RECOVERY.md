@@ -61,3 +61,6 @@ Before native connection, Relay backs up the existing Kimi configuration, native
 Disconnect and remove optional resolution first. Fully exit Kimi, Relay and any old rewrite proxy. Select a complete pre-connection snapshot, verify its hashes, separately back up current files, then copy each recorded `name` to its original `source` path. A missing manifest entry may mean the file did not exist; do not guess which unrelated files to overwrite. Prefer Kimi's own Disconnect action for cleaning the native provider profile. Old login tokens may require signing in again after restoration.
 
 Legacy migration never disables the old proxy or removes its startup entries. Stop that proxy before switching to the new native connection. Backup folders contain credentials; keep them private.
+
+
+beta.7 默认供应商、在线模型选择、思考档位保存与使用说明 / Provider defaults, live selection and reasoning setup: [MODEL-PICKER.md](MODEL-PICKER.md).

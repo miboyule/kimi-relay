@@ -50,6 +50,8 @@ with tempfile.TemporaryDirectory(prefix='lite-build-', dir=DIST) as temporary:
     for file in ['LICENSE', 'THIRD_PARTY_NOTICES.md']:
         shutil.copy2(ROOT / file, stage / file)
     shutil.copy2(ROOT / 'docs/LITE.md', stage / 'README.md')
+    for file in ['MODEL-PICKER.md', 'REASONING-AND-NEWAPI.md', 'CHANGES-AND-RECOVERY.md']:
+        shutil.copy2(ROOT / 'docs' / file, stage / file)
     (stage / 'VERSION.json').write_text(json.dumps({'edition': 'lite', 'version': version,
         'runtimeMajor': 24, 'runtimeVersion': runtime['version']}, indent=2) + '\n', encoding='utf-8')
     # These launchers remain in updates; all persistent data lives outside app/.
