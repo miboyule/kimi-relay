@@ -1,5 +1,7 @@
 # Kimi Relay · Kimi 接力
 
+**不熟悉操作？先看 [详细中文图文教程：启动、停止、修改、撤销与恢复（含 GIF）](docs/USER-GUIDE.zh-CN.md)。**
+
 [English](README.en.md) · [下载预览版](https://github.com/miboyule/kimi-relay/releases) · [客户答复 / Customer replies](docs/CUSTOMER-FAQ.md) · [改动与恢复 / Changes & recovery](docs/CHANGES-AND-RECOVERY.md)
 
 让 Kimi Work 使用你自己的第三方模型供应商。**中转站余额是第三方 API 额度，不是 Kimi 官方积分；本工具不会给 Kimi 官方账户充值。**
